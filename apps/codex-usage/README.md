@@ -12,7 +12,7 @@ The app includes:
 - live Codex and Spark weekly usage, reset countdowns, and reset dates from the signed-in Codex CLI session;
 - de-duplication for repeated token events and copied fork/subagent history;
 - LiteLLM pricing with a 24-hour offline cache;
-- a native macOS menu-bar item and pull-down menu, with an independently hideable icon;
+- a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
 - a configurable menu-bar value: cost, tokens, sessions, Codex/Spark usage percentage only,
   percentage plus time left, percentage plus reset date, time left plus reset date, or icon only;
 - a native About window with author/version details and an on-demand GitHub release check;

@@ -17,8 +17,11 @@ const api: CodexUsageApi = {
     ipcRenderer.invoke("usage:update-preferences", patch),
   getAppInfo: () => ipcRenderer.invoke("app:get-info") as Promise<AppInfo>,
   checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates") as Promise<UpdateCheckResult>,
+  openMainWindow: () => ipcRenderer.invoke("app:open-main") as Promise<void>,
   openAboutWindow: () => ipcRenderer.invoke("app:open-about") as Promise<void>,
   openRelease: (url: string) => ipcRenderer.invoke("app:open-release", url) as Promise<void>,
+  closeMenuBarPopover: () => ipcRenderer.invoke("app:close-menu-bar-popover") as Promise<void>,
+  quitApp: () => ipcRenderer.invoke("app:quit") as Promise<void>,
   onSnapshot: (listener) => {
     const handle = (_event: Electron.IpcRendererEvent, snapshot: UsageSnapshot) =>
       listener(snapshot);

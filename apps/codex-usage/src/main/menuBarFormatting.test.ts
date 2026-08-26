@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   formatMenuBarUsd,
   formatRateLimitStatus,
+  getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
 
@@ -48,5 +49,31 @@ describe("shouldShowMenuBarIcon", () => {
 
   it("keeps the status item reachable in icon-only mode", () => {
     expect(shouldShowMenuBarIcon(false, "icon-only")).toBe(true);
+  });
+});
+
+describe("getMenuBarPopoverPosition", () => {
+  const workArea = { x: 0, y: 24, width: 1_440, height: 876 };
+  const popover = { width: 380, height: 640 };
+
+  it("centers the popover beneath the status item", () => {
+    expect(
+      getMenuBarPopoverPosition({ x: 700, y: 0, width: 24, height: 24 }, workArea, popover),
+    ).toEqual({ x: 522, y: 30 });
+  });
+
+  it("keeps the popover inside the display at either horizontal edge", () => {
+    expect(
+      getMenuBarPopoverPosition({ x: 4, y: 0, width: 24, height: 24 }, workArea, popover).x,
+    ).toBe(0);
+    expect(
+      getMenuBarPopoverPosition({ x: 1_420, y: 0, width: 20, height: 24 }, workArea, popover).x,
+    ).toBe(1_060);
+  });
+
+  it("opens above a bottom-positioned status item", () => {
+    expect(
+      getMenuBarPopoverPosition({ x: 700, y: 876, width: 24, height: 24 }, workArea, popover).y,
+    ).toBe(230);
   });
 });

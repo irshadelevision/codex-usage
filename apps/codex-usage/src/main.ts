@@ -101,24 +101,18 @@ async function refreshUsage(): Promise<UsageSnapshot> {
 async function updatePreferences(patch: UsagePreferencesPatch) {
   const next = await preferences.update(patch);
   app.setLoginItemSettings({ openAtLogin: next.launchAtLogin });
-  menuBar.sync(latestSnapshot, next);
   broadcast("usage:preferences", next);
+  if (next.showInMenuBar) {
+    menuBar.sync(latestSnapshot, next);
+  } else {
+    setImmediate(() => menuBar.sync(latestSnapshot, preferences.get()));
+  }
   return next;
 }
 
 const menuBar = new MenuBarController({
-  openWindow,
-  openAboutWindow: openAboutWindowInBackground,
-  refresh: async () => {
-    await refreshUsage();
-  },
-  updatePreferences: async (patch) => {
-    await updatePreferences(patch);
-  },
-  quit: () => {
-    quitting = true;
-    app.quit();
-  },
+  createPopoverWindow: createMenuBarPopoverWindow,
+  loadPopoverWindow: (window) => loadRendererView(window, "menu-bar"),
 });
 
 async function loadRendererView(window: BrowserWindow, view?: string) {
@@ -132,6 +126,40 @@ async function loadRendererView(window: BrowserWindow, view?: string) {
     NodePath.join(currentDirectory, "../dist-renderer/index.html"),
     view === undefined ? undefined : { query: { view } },
   );
+}
+
+function createMenuBarPopoverWindow() {
+  const window = new BrowserWindow({
+    title: "Codex Usage",
+    width: 390,
+    height: 684,
+    useContentSize: true,
+    frame: false,
+    transparent: true,
+    hasShadow: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    show: false,
+    acceptFirstMouse: true,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: NodePath.join(currentDirectory, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  window.setAlwaysOnTop(true, "pop-up-menu");
+  window.setHiddenInMissionControl(true);
+  window.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  });
+  return window;
 }
 
 async function createWindow() {
@@ -256,7 +284,19 @@ ipcMain.handle(
   () => ({ name: app.getName(), version: app.getVersion(), author: APP_AUTHOR }) satisfies AppInfo,
 );
 ipcMain.handle("app:check-for-updates", () => checkForUpdates(app.getVersion()));
-ipcMain.handle("app:open-about", () => createAboutWindow());
+ipcMain.handle("app:open-main", () => {
+  menuBar.hidePopover();
+  openWindow();
+});
+ipcMain.handle("app:open-about", () => {
+  menuBar.hidePopover();
+  return createAboutWindow();
+});
+ipcMain.handle("app:close-menu-bar-popover", () => menuBar.hidePopover());
+ipcMain.handle("app:quit", () => {
+  quitting = true;
+  app.quit();
+});
 ipcMain.handle("app:open-release", async (_event, url: unknown) => {
   if (typeof url !== "string" || !isTrustedReleaseUrl(url)) {
     throw new Error("The release URL is not trusted.");

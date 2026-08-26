@@ -12,6 +12,7 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
+import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
 import {
@@ -29,25 +30,6 @@ import { UsageChart } from "./UsageChart.tsx";
 
 const METRICS = ["cost", "tokens"] as const;
 const BREAKDOWNS = ["models", "modes"] as const;
-
-const MENU_BAR_DISPLAY_LABELS: Record<MenuBarDisplay, string> = {
-  cost: "Estimated cost",
-  tokens: "Processed tokens",
-  sessions: "Sessions",
-  "codex-weekly": "Codex usage % only",
-  "codex-weekly-time": "Codex usage % + time left",
-  "codex-weekly-date": "Codex usage % + reset date",
-  "codex-reset": "Codex time left + reset date",
-  "spark-weekly": "Spark usage % only",
-  "spark-weekly-time": "Spark usage % + time left",
-  "spark-weekly-date": "Spark usage % + reset date",
-  "spark-reset": "Spark time left + reset date",
-  "icon-only": "Icon only",
-};
-
-function menuBarDisplayUsesRange(display: MenuBarDisplay): boolean {
-  return display === "cost" || display === "tokens" || display === "sessions";
-}
 
 function errorMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : "Unknown operation failure";
@@ -184,7 +166,7 @@ function SettingsPopover({
         <InfoIcon size={14} />
       </button>
       <p className="settings-note">
-        Click the status item to open the native usage menu. Icon-only display always keeps the icon
+        Click the status item to open the usage menu. Icon-only display always keeps the icon
         visible.
       </p>
     </div>

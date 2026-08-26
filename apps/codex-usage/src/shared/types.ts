@@ -126,8 +126,11 @@ export interface CodexUsageApi {
   readonly updatePreferences: (patch: UsagePreferencesPatch) => Promise<UsagePreferences>;
   readonly getAppInfo: () => Promise<AppInfo>;
   readonly checkForUpdates: () => Promise<UpdateCheckResult>;
+  readonly openMainWindow: () => Promise<void>;
   readonly openAboutWindow: () => Promise<void>;
   readonly openRelease: (url: string) => Promise<void>;
+  readonly closeMenuBarPopover: () => Promise<void>;
+  readonly quitApp: () => Promise<void>;
   readonly onSnapshot: (listener: (snapshot: UsageSnapshot) => void) => () => void;
   readonly onPreferences: (listener: (preferences: UsagePreferences) => void) => () => void;
 }

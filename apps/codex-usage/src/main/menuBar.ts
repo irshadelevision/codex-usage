@@ -1,62 +1,28 @@
 import * as NodePath from "node:path";
 
-import {
-  Menu,
-  Tray,
-  app,
-  nativeImage,
-  type MenuItemConstructorOptions,
-  type NativeImage,
-} from "electron";
+import { BrowserWindow, Tray, app, nativeImage, screen, type NativeImage } from "electron";
 
 import type {
-  CodexWeeklyRateLimit,
   MenuBarDisplay,
   RangeSummary,
   UsagePreferences,
-  UsagePreferencesPatch,
-  UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { formatMenuBarReset, formatResetDateTime } from "../shared/resetTime.ts";
-import { MENU_BAR_DISPLAYS } from "../shared/types.ts";
 import {
   formatMenuBarUsd,
   formatRateLimitStatus,
+  getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
-
-const RANGE_LABELS: Record<UsageRange, string> = {
-  "24h": "Past 24 hours",
-  "7d": "7 days",
-  "30d": "30 days",
-  "90d": "90 days",
-};
-
-const DISPLAY_LABELS: Record<MenuBarDisplay, string> = {
-  cost: "Estimated cost",
-  tokens: "Processed tokens",
-  sessions: "Sessions",
-  "codex-weekly": "Codex usage % only",
-  "codex-weekly-time": "Codex usage % + time left",
-  "codex-weekly-date": "Codex usage % + reset date",
-  "codex-reset": "Codex time left + reset date",
-  "spark-weekly": "Spark usage % only",
-  "spark-weekly-time": "Spark usage % + time left",
-  "spark-weekly-date": "Spark usage % + reset date",
-  "spark-reset": "Spark time left + reset date",
-  "icon-only": "Icon only",
-};
 
 const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumSignificantDigits: 3,
 });
-function runMenuAction(action: Promise<unknown>) {
-  void action.catch((cause: unknown) => {
-    const message = cause instanceof Error ? cause.message : String(cause);
-    console.error(`[Codex Usage] Menu action failed: ${message}`);
-  });
+
+function reportPopoverFailure(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  console.error(`[Codex Usage] Menu bar popover failed: ${message}`);
 }
 
 function createMenuBarIcon() {
@@ -82,22 +48,6 @@ function formatRangeDisplay(summary: RangeSummary, display: MenuBarDisplay): str
   if (display === "tokens") return formatTokens(summary.totalTokens);
   if (display === "sessions") return new Intl.NumberFormat("en-US").format(summary.sessions);
   return formatMenuBarUsd(summary.costUsd);
-}
-
-function formatWeeklyLimit(limit: CodexWeeklyRateLimit | null, nowMs: number): string {
-  if (limit === null) return "Unavailable";
-  const reset = formatMenuBarReset(limit.resetsAt, nowMs);
-  return reset === "—"
-    ? `${limit.remainingPercent}% remaining`
-    : `${limit.remainingPercent}% remaining · ${reset}`;
-}
-
-function formatReset(limit: CodexWeeklyRateLimit | null): string {
-  return limit === null ? "Reset date unavailable" : formatResetDateTime(limit.resetsAt);
-}
-
-function isRangeDisplay(display: MenuBarDisplay): boolean {
-  return display === "cost" || display === "tokens" || display === "sessions";
 }
 
 function usesCountdown(display: MenuBarDisplay): boolean {
@@ -146,23 +96,16 @@ function formatStatusTitle(
   return formatRangeDisplay(snapshot.ranges[preferences.menuBarRange], preferences.menuBarDisplay);
 }
 
-function titleCase(value: string): string {
-  if (value === "unknown") return "Unknown";
-  if (value === "xhigh") return "Xhigh";
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 interface MenuBarControllerInput {
-  readonly openWindow: () => void;
-  readonly openAboutWindow: () => void;
-  readonly refresh: () => Promise<void>;
-  readonly updatePreferences: (patch: UsagePreferencesPatch) => Promise<void>;
-  readonly quit: () => void;
+  readonly createPopoverWindow: () => BrowserWindow;
+  readonly loadPopoverWindow: (window: BrowserWindow) => Promise<void>;
 }
 
 export class MenuBarController {
   readonly #input: MenuBarControllerInput;
   #tray: Tray | null = null;
+  #popover: BrowserWindow | null = null;
+  #popoverLoad: Promise<void> | null = null;
   #menuBarIcon: NativeImage | null = null;
   #hiddenMenuBarIcon: NativeImage | null = null;
   #iconVisible: boolean | null = null;
@@ -191,15 +134,28 @@ export class MenuBarController {
       this.#tray = new Tray(iconVisible ? this.#menuBarIcon : this.#hiddenMenuBarIcon);
       this.#iconVisible = iconVisible;
       this.#tray.setToolTip("Codex Usage");
-      this.#tray.on("click", () => this.#tray?.popUpContextMenu());
+      this.#tray.setIgnoreDoubleClickEvents(true);
+      this.#tray.on("click", () => {
+        void this.#togglePopover().catch(reportPopoverFailure);
+      });
+      this.#tray.on("right-click", () => {
+        void this.#togglePopover().catch(reportPopoverFailure);
+      });
     }
     this.#syncCountdownTimer();
-    this.#render();
+    this.#renderStatusItem();
+  }
+
+  hidePopover() {
+    this.#popover?.hide();
   }
 
   destroy() {
     if (this.#countdownTimer !== null) clearInterval(this.#countdownTimer);
     this.#countdownTimer = null;
+    this.#popover?.destroy();
+    this.#popover = null;
+    this.#popoverLoad = null;
     this.#tray?.destroy();
     this.#tray = null;
     this.#iconVisible = null;
@@ -208,7 +164,7 @@ export class MenuBarController {
   #syncCountdownTimer() {
     const shouldRun = this.#preferences !== null && usesCountdown(this.#preferences.menuBarDisplay);
     if (shouldRun && this.#countdownTimer === null) {
-      this.#countdownTimer = setInterval(() => this.#render(), 60_000);
+      this.#countdownTimer = setInterval(() => this.#renderStatusItem(), 60_000);
       this.#countdownTimer.unref();
     } else if (!shouldRun && this.#countdownTimer !== null) {
       clearInterval(this.#countdownTimer);
@@ -216,15 +172,68 @@ export class MenuBarController {
     }
   }
 
-  #render() {
+  async #togglePopover() {
+    const popover = await this.#ensurePopover();
+    if (popover.isDestroyed()) return;
+    if (popover.isVisible()) {
+      popover.hide();
+      return;
+    }
+
+    const tray = this.#tray;
+    if (tray === null || tray.isDestroyed()) return;
+    const anchor = tray.getBounds();
+    const anchorCenter = {
+      x: Math.round(anchor.x + anchor.width / 2),
+      y: Math.round(anchor.y + anchor.height / 2),
+    };
+    const workArea = screen.getDisplayNearestPoint(anchorCenter).workArea;
+    const position = getMenuBarPopoverPosition(anchor, workArea, popover.getBounds());
+    popover.setPosition(position.x, position.y, false);
+    popover.show();
+    popover.focus();
+  }
+
+  async #ensurePopover(): Promise<BrowserWindow> {
+    if (this.#popover !== null && !this.#popover.isDestroyed()) {
+      if (this.#popoverLoad !== null) await this.#popoverLoad;
+      return this.#popover;
+    }
+
+    const popover = this.#input.createPopoverWindow();
+    this.#popover = popover;
+    popover.on("blur", () => {
+      if (!popover.webContents.isDevToolsOpened()) popover.hide();
+    });
+    popover.on("closed", () => {
+      if (this.#popover === popover) {
+        this.#popover = null;
+        this.#popoverLoad = null;
+      }
+    });
+    popover.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
+    const load = this.#input.loadPopoverWindow(popover);
+    this.#popoverLoad = load;
+    try {
+      await load;
+    } catch (cause) {
+      if (!popover.isDestroyed()) popover.destroy();
+      throw cause;
+    } finally {
+      if (this.#popover === popover) this.#popoverLoad = null;
+    }
+    return popover;
+  }
+
+  #renderStatusItem() {
     const tray = this.#tray;
     const preferences = this.#preferences;
     if (tray === null || preferences === null) return;
 
     const snapshot = this.#snapshot;
-    const nowMs = Date.now();
-    const selected = snapshot?.ranges[preferences.menuBarRange];
-    const statusTitle = snapshot === null ? "—" : formatStatusTitle(snapshot, preferences, nowMs);
+    const statusTitle =
+      snapshot === null ? "—" : formatStatusTitle(snapshot, preferences, Date.now());
     const iconVisible = shouldShowMenuBarIcon(
       preferences.showMenuBarIcon,
       preferences.menuBarDisplay,
@@ -236,108 +245,5 @@ export class MenuBarController {
       this.#iconVisible = iconVisible;
     }
     tray.setTitle(statusTitle.length === 0 ? "" : ` ${statusTitle}`);
-
-    const summaryDisplay = isRangeDisplay(preferences.menuBarDisplay)
-      ? preferences.menuBarDisplay
-      : "cost";
-
-    const summaryRows: MenuItemConstructorOptions[] = snapshot
-      ? (Object.entries(RANGE_LABELS) as [UsageRange, string][]).map(([range, label]) => ({
-          label,
-          sublabel: formatRangeDisplay(snapshot.ranges[range], summaryDisplay),
-          enabled: false,
-        }))
-      : [{ label: "Scanning local Codex sessions…", enabled: false }];
-    const topModel = selected?.models[0]?.key ?? "No activity";
-    const topMode = selected?.modes[0]?.key ?? "No activity";
-
-    const template: MenuItemConstructorOptions[] = [
-      { label: "Codex Usage", enabled: false },
-      { type: "separator" },
-      {
-        label: "Codex usage · weekly",
-        sublabel:
-          snapshot === null
-            ? "Reading account limits…"
-            : formatWeeklyLimit(snapshot.rateLimits.codex, nowMs),
-        toolTip:
-          snapshot === null ? "Reading account limits…" : formatReset(snapshot.rateLimits.codex),
-        enabled: false,
-      },
-      {
-        label: "Spark usage · weekly",
-        sublabel:
-          snapshot === null
-            ? "Reading account limits…"
-            : formatWeeklyLimit(snapshot.rateLimits.spark, nowMs),
-        toolTip:
-          snapshot === null ? "Reading account limits…" : formatReset(snapshot.rateLimits.spark),
-        enabled: false,
-      },
-      { type: "separator" },
-      ...summaryRows,
-      { type: "separator" },
-      { label: "Top model", sublabel: topModel, enabled: false },
-      { label: "Top mode", sublabel: titleCase(topMode), enabled: false },
-      { type: "separator" },
-      {
-        label: "Menu Bar Range",
-        enabled: isRangeDisplay(preferences.menuBarDisplay),
-        submenu: (Object.entries(RANGE_LABELS) as [UsageRange, string][]).map(([range, label]) => ({
-          label,
-          type: "radio" as const,
-          checked: preferences.menuBarRange === range,
-          click: () => runMenuAction(this.#input.updatePreferences({ menuBarRange: range })),
-        })),
-      },
-      {
-        label: "Menu Bar Display",
-        submenu: MENU_BAR_DISPLAYS.map((display) => ({
-          label: DISPLAY_LABELS[display],
-          type: "radio" as const,
-          checked: preferences.menuBarDisplay === display,
-          click: () => runMenuAction(this.#input.updatePreferences({ menuBarDisplay: display })),
-        })),
-      },
-      { type: "separator" },
-      {
-        label: "Refresh",
-        accelerator: "CmdOrCtrl+R",
-        click: () => runMenuAction(this.#input.refresh()),
-      },
-      {
-        label: "Open Codex Usage",
-        accelerator: "CmdOrCtrl+O",
-        click: this.#input.openWindow,
-      },
-      { type: "separator" },
-      {
-        label: "Launch at Login",
-        type: "checkbox",
-        checked: preferences.launchAtLogin,
-        click: (item) =>
-          runMenuAction(this.#input.updatePreferences({ launchAtLogin: item.checked })),
-      },
-      {
-        label: "Show Menu Bar Icon",
-        type: "checkbox",
-        checked: shouldShowMenuBarIcon(preferences.showMenuBarIcon, preferences.menuBarDisplay),
-        enabled: preferences.menuBarDisplay !== "icon-only",
-        click: (item) =>
-          runMenuAction(this.#input.updatePreferences({ showMenuBarIcon: item.checked })),
-      },
-      {
-        label: "Show in Menu Bar",
-        type: "checkbox",
-        checked: preferences.showInMenuBar,
-        click: (item) =>
-          runMenuAction(this.#input.updatePreferences({ showInMenuBar: item.checked })),
-      },
-      { type: "separator" },
-      { label: "About Codex Usage", click: this.#input.openAboutWindow },
-      { label: "Quit", accelerator: "CmdOrCtrl+Q", click: this.#input.quit },
-    ];
-
-    tray.setContextMenu(Menu.buildFromTemplate(template));
   }
 }
