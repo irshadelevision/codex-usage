@@ -83,6 +83,7 @@ button:disabled {
   align-items: baseline;
   gap: 12px;
   overflow: hidden;
+  transform: translateY(-4px);
 }
 
 .titlebar-copy h1 {
