@@ -1,4 +1,4 @@
-import { ExternalLinkIcon } from "lucide-react";
+import { DownloadIcon, ExternalLinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import appIconUrl from "../../build/icon.png";
@@ -19,9 +19,12 @@ function updateMessage(state: UpdateState): string {
   if (state.kind === "checking") return "Checking the latest GitHub release…";
   if (state.kind === "error") return `Update check failed: ${state.message}`;
   if (state.kind === "result") {
-    return state.value.updateAvailable
-      ? `Version ${state.value.latestVersion} is available.`
-      : `You’re up to date with version ${state.value.currentVersion}.`;
+    if (!state.value.updateAvailable) {
+      return `You’re up to date with version ${state.value.currentVersion}.`;
+    }
+    return state.value.downloadUrl === null
+      ? `Version ${state.value.latestVersion} is available. Open the release to download it.`
+      : `Version ${state.value.latestVersion} is available for download.`;
   }
   return "Check GitHub to see whether a newer release is available.";
 }
@@ -60,7 +63,14 @@ export function AboutView() {
       .catch((cause: unknown) => setUpdateState({ kind: "error", message: errorMessage(cause) }));
   };
 
+  const downloadUpdate = (url: string) => {
+    void api
+      .downloadUpdate(url)
+      .catch((cause: unknown) => setUpdateState({ kind: "error", message: errorMessage(cause) }));
+  };
+
   const result = updateState.kind === "result" ? updateState.value : null;
+  const downloadUrl = result?.updateAvailable === true ? result.downloadUrl : null;
   return (
     <main className="about-shell">
       <img className="about-icon" src={appIconUrl} alt="" />
@@ -72,21 +82,36 @@ export function AboutView() {
         <h2 id="update-heading">Software Update</h2>
         <p aria-live="polite">{infoError ?? updateMessage(updateState)}</p>
         <div className="about-actions">
-          <button
-            type="button"
-            className="primary-button"
-            disabled={updateState.kind === "checking"}
-            onClick={checkForUpdates}
-          >
-            {updateState.kind === "checking" ? "Checking…" : "Check for Updates"}
-          </button>
+          {downloadUrl === null ? (
+            <button
+              type="button"
+              className="primary-button"
+              disabled={updateState.kind === "checking"}
+              onClick={checkForUpdates}
+            >
+              {updateState.kind === "checking"
+                ? "Checking…"
+                : result === null
+                  ? "Check for Updates"
+                  : "Check Again"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => downloadUpdate(downloadUrl)}
+            >
+              Download DMG
+              <DownloadIcon size={13} />
+            </button>
+          )}
           {result === null ? null : (
             <button
               type="button"
               className="secondary-button"
               onClick={() => openRelease(result.releaseUrl)}
             >
-              {result.updateAvailable ? "View Update" : "View Latest Release"}
+              {result.updateAvailable ? "View Release" : "View Latest Release"}
               <ExternalLinkIcon size={13} />
             </button>
           )}

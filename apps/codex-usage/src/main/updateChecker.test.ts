@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { checkForUpdates, compareVersions, isTrustedReleaseUrl } from "./updateChecker.ts";
+import {
+  checkForUpdates,
+  compareVersions,
+  isTrustedDownloadUrl,
+  isTrustedReleaseUrl,
+} from "./updateChecker.ts";
 
 describe("compareVersions", () => {
   it("compares semantic release versions", () => {
@@ -30,8 +35,33 @@ describe("isTrustedReleaseUrl", () => {
   });
 });
 
+describe("isTrustedDownloadUrl", () => {
+  it("allows only DMG assets from this repository's release downloads", () => {
+    expect(
+      isTrustedDownloadUrl(
+        "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/Codex.Usage-0.2.0-arm64.dmg",
+      ),
+    ).toBe(true);
+    expect(
+      isTrustedDownloadUrl(
+        "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/source.zip",
+      ),
+    ).toBe(false);
+    expect(
+      isTrustedDownloadUrl(
+        "https://example.com/irshadelevision/codex-usage/releases/download/v0.2.0/app.dmg",
+      ),
+    ).toBe(false);
+    expect(
+      isTrustedDownloadUrl(
+        "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/app.dmg?redirect=evil",
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("checkForUpdates", () => {
-  it("reads and compares the latest GitHub release", async () => {
+  it("reads the latest release and selects the matching DMG architecture", async () => {
     const result = await checkForUpdates(
       "0.1.12",
       async () =>
@@ -39,16 +69,57 @@ describe("checkForUpdates", () => {
           JSON.stringify({
             tag_name: "v0.2.0",
             html_url: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.2.0",
+            assets: [
+              {
+                name: "Codex.Usage-0.2.0-x64.dmg",
+                state: "uploaded",
+                browser_download_url:
+                  "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/Codex.Usage-0.2.0-x64.dmg",
+              },
+              {
+                name: "Codex.Usage-0.2.0-arm64.dmg",
+                state: "uploaded",
+                browser_download_url:
+                  "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/Codex.Usage-0.2.0-arm64.dmg",
+              },
+            ],
           }),
           { status: 200 },
         ),
+      "arm64",
     );
     expect(result).toEqual({
       currentVersion: "0.1.12",
       latestVersion: "0.2.0",
       updateAvailable: true,
       releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.2.0",
+      downloadUrl:
+        "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/Codex.Usage-0.2.0-arm64.dmg",
     });
+  });
+
+  it("keeps the release usable when no trusted DMG is attached", async () => {
+    const result = await checkForUpdates(
+      "0.1.12",
+      async () =>
+        new Response(
+          JSON.stringify({
+            tag_name: "v0.2.0",
+            html_url: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.2.0",
+            assets: [
+              {
+                name: "Codex.Usage-0.2.0-arm64.dmg",
+                state: "uploaded",
+                browser_download_url: "https://example.com/malicious.dmg",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      "arm64",
+    );
+    expect(result.downloadUrl).toBeNull();
+    expect(result.updateAvailable).toBe(true);
   });
 
   it("reports GitHub and invalid response failures", async () => {

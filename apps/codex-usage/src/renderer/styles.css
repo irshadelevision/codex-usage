@@ -978,6 +978,13 @@ th.numeric {
   gap: 8px;
 }
 
+.about-actions .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .secondary-button {
   display: inline-flex;
   min-height: 30px;

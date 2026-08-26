@@ -117,6 +117,7 @@ export interface UpdateCheckResult {
   readonly latestVersion: string;
   readonly updateAvailable: boolean;
   readonly releaseUrl: string;
+  readonly downloadUrl: string | null;
 }
 
 export interface CodexUsageApi {
@@ -129,6 +130,7 @@ export interface CodexUsageApi {
   readonly openMainWindow: () => Promise<void>;
   readonly openAboutWindow: () => Promise<void>;
   readonly openRelease: (url: string) => Promise<void>;
+  readonly downloadUpdate: (url: string) => Promise<void>;
   readonly closeMenuBarPopover: () => Promise<void>;
   readonly quitApp: () => Promise<void>;
   readonly onSnapshot: (listener: (snapshot: UsageSnapshot) => void) => () => void;

@@ -16,7 +16,11 @@ import { MenuBarController } from "./main/menuBar.ts";
 import { PreferencesStore } from "./main/preferences.ts";
 import { CodexRateLimitReader } from "./main/rateLimits.ts";
 import { CodexUsageScanner } from "./main/scanner.ts";
-import { checkForUpdates, isTrustedReleaseUrl } from "./main/updateChecker.ts";
+import {
+  checkForUpdates,
+  isTrustedDownloadUrl,
+  isTrustedReleaseUrl,
+} from "./main/updateChecker.ts";
 
 const currentDirectory = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 const devUrl = process.env["CODEX_USAGE_DEV_URL"]?.trim();
@@ -300,6 +304,12 @@ ipcMain.handle("app:quit", () => {
 ipcMain.handle("app:open-release", async (_event, url: unknown) => {
   if (typeof url !== "string" || !isTrustedReleaseUrl(url)) {
     throw new Error("The release URL is not trusted.");
+  }
+  await shell.openExternal(url);
+});
+ipcMain.handle("app:download-update", async (_event, url: unknown) => {
+  if (typeof url !== "string" || !isTrustedDownloadUrl(url)) {
+    throw new Error("The update download URL is not trusted.");
   }
   await shell.openExternal(url);
 });

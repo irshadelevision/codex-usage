@@ -20,6 +20,7 @@ const api: CodexUsageApi = {
   openMainWindow: () => ipcRenderer.invoke("app:open-main") as Promise<void>,
   openAboutWindow: () => ipcRenderer.invoke("app:open-about") as Promise<void>,
   openRelease: (url: string) => ipcRenderer.invoke("app:open-release", url) as Promise<void>,
+  downloadUpdate: (url: string) => ipcRenderer.invoke("app:download-update", url) as Promise<void>,
   closeMenuBarPopover: () => ipcRenderer.invoke("app:close-menu-bar-popover") as Promise<void>,
   quitApp: () => ipcRenderer.invoke("app:quit") as Promise<void>,
   onSnapshot: (listener) => {

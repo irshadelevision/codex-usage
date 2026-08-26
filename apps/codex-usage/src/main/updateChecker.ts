@@ -3,6 +3,7 @@ import type { UpdateCheckResult } from "../shared/types.ts";
 const LATEST_RELEASE_URL =
   "https://api.github.com/repos/irshadelevision/codex-usage/releases/latest";
 const RELEASE_PATH_PREFIX = "/irshadelevision/codex-usage/releases/tag/";
+const DOWNLOAD_PATH_PREFIX = "/irshadelevision/codex-usage/releases/download/";
 const VERSION_PATTERN = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/;
 
 type FetchRelease = (input: string, init: RequestInit) => Promise<Response>;
@@ -47,15 +48,65 @@ export function isTrustedReleaseUrl(value: string): boolean {
   }
 }
 
+export function isTrustedDownloadUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "github.com" ||
+      url.port !== "" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      url.search !== "" ||
+      url.hash !== "" ||
+      !url.pathname.startsWith(DOWNLOAD_PATH_PREFIX)
+    ) {
+      return false;
+    }
+    const path = url.pathname.slice(DOWNLOAD_PATH_PREFIX.length).split("/");
+    return path.length === 2 && path[0]!.length > 0 && path[1]!.toLowerCase().endsWith(".dmg");
+  } catch {
+    return false;
+  }
+}
+
 function releaseField(value: unknown, field: string): string | null {
   if (typeof value !== "object" || value === null) return null;
   const candidate = (value as Record<string, unknown>)[field];
   return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
 }
 
+function findDmgDownloadUrl(release: unknown, architecture: string): string | null {
+  if (typeof release !== "object" || release === null) return null;
+  const assets = (release as Record<string, unknown>)["assets"];
+  if (!Array.isArray(assets)) return null;
+
+  const candidates = assets.flatMap((asset) => {
+    const name = releaseField(asset, "name");
+    const url = releaseField(asset, "browser_download_url");
+    const state = releaseField(asset, "state");
+    if (
+      name === null ||
+      url === null ||
+      !name.toLowerCase().endsWith(".dmg") ||
+      state !== "uploaded" ||
+      !isTrustedDownloadUrl(url)
+    ) {
+      return [];
+    }
+    return [{ name: name.toLowerCase(), url }];
+  });
+  return (
+    candidates.find(({ name }) => name.includes(`-${architecture}.dmg`))?.url ??
+    candidates.find(({ name }) => name.includes("-universal.dmg"))?.url ??
+    (candidates.length === 1 ? candidates[0]!.url : null)
+  );
+}
+
 export async function checkForUpdates(
   currentVersion: string,
   fetchRelease: FetchRelease = fetch,
+  architecture = process.arch,
 ): Promise<UpdateCheckResult> {
   const response = await fetchRelease(LATEST_RELEASE_URL, {
     cache: "no-store",
@@ -81,5 +132,6 @@ export async function checkForUpdates(
     latestVersion,
     updateAvailable: compareVersions(latestVersion, currentVersion) > 0,
     releaseUrl,
+    downloadUrl: findDmgDownloadUrl(release, architecture),
   };
 }
