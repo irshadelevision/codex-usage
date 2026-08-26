@@ -22,6 +22,12 @@ function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function timestampToIso(value: number | null): string | null {
+  if (value === null || value < 0) return null;
+  const date = new Date(value * 1000);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function parseWindow(value: unknown): RateLimitWindow | null {
   const input = object(value);
   if (input === null) return null;
@@ -29,7 +35,7 @@ function parseWindow(value: unknown): RateLimitWindow | null {
   if (usedPercent === null) return null;
   return {
     usedPercent: Math.min(100, Math.max(0, Math.round(usedPercent))),
-    windowDurationMins: finiteNumber(input["windowDurationMins"]),
+    windowDurationMins: Math.max(0, finiteNumber(input["windowDurationMins"]) ?? 0) || null,
     resetsAt: finiteNumber(input["resetsAt"]),
   };
 }
@@ -63,7 +69,7 @@ function toWeeklyLimit(
     name,
     usedPercent: window.usedPercent,
     remainingPercent: 100 - window.usedPercent,
-    resetsAt: window.resetsAt === null ? null : new Date(window.resetsAt * 1000).toISOString(),
+    resetsAt: timestampToIso(window.resetsAt),
     windowDurationMins: window.windowDurationMins,
   };
 }
@@ -145,7 +151,11 @@ export async function findCodexBinary(homePath: string): Promise<string | null> 
   return null;
 }
 
-async function requestPlanUsage(binaryPath: string, cwd: string): Promise<unknown> {
+async function requestPlanUsage(
+  binaryPath: string,
+  cwd: string,
+  clientVersion: string,
+): Promise<unknown> {
   const child = NodeChildProcess.spawn(binaryPath, ["app-server", "--stdio"], {
     cwd,
     env: process.env,
@@ -215,7 +225,7 @@ async function requestPlanUsage(binaryPath: string, cwd: string): Promise<unknow
 
   try {
     await request("initialize", {
-      clientInfo: { name: "codex_usage", title: "Codex Usage", version: "0.1.5" },
+      clientInfo: { name: "codex_usage", title: "Codex Usage", version: clientVersion },
       capabilities: { experimentalApi: true },
     });
     child.stdin.write(`${JSON.stringify({ method: "initialized" })}\n`);
@@ -235,10 +245,12 @@ async function requestPlanUsage(binaryPath: string, cwd: string): Promise<unknow
 
 export class CodexRateLimitReader {
   readonly #homePath: string;
+  readonly #clientVersion: string;
   #lastAvailable: CodexRateLimits | null = null;
 
-  constructor(homePath: string) {
+  constructor(homePath: string, clientVersion: string) {
     this.#homePath = homePath;
+    this.#clientVersion = clientVersion;
   }
 
   async read(nowMs = Date.now()): Promise<CodexRateLimits> {
@@ -257,7 +269,7 @@ export class CodexRateLimitReader {
 
     try {
       const result = parseRateLimitResponse(
-        await requestPlanUsage(binaryPath, this.#homePath),
+        await requestPlanUsage(binaryPath, this.#homePath, this.#clientVersion),
         readAt,
       );
       if (result.status === "available") this.#lastAvailable = result;

@@ -46,6 +46,10 @@ function menuBarDisplayUsesRange(display: MenuBarDisplay): boolean {
   return display === "cost" || display === "tokens" || display === "sessions";
 }
 
+function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : "Unknown operation failure";
+}
+
 function SegmentedControl<T extends string>({
   label,
   options,
@@ -112,7 +116,7 @@ function SettingsPopover({
 }) {
   const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
   return (
-    <div className="settings-popover" role="dialog" aria-label="Usage settings">
+    <div id="usage-settings" className="settings-popover" role="dialog" aria-label="Usage settings">
       <div className="settings-heading">
         <strong>Menu bar</strong>
         <button
@@ -399,7 +403,10 @@ export function App() {
   useEffect(() => {
     let active = true;
     const unsubscribeSnapshot = api.onSnapshot((value) => {
-      if (active) setSnapshot(value);
+      if (active) {
+        setSnapshot(value);
+        setError(null);
+      }
     });
     const unsubscribePreferences = api.onPreferences((value) => {
       if (active) setPreferences(value);
@@ -409,9 +416,10 @@ export function App() {
         if (!active) return;
         setSnapshot(nextSnapshot);
         setPreferences(nextPreferences);
+        setError(null);
       })
       .catch((cause: unknown) => {
-        if (active) setError(cause instanceof Error ? cause.message : "Unknown scan failure");
+        if (active) setError(errorMessage(cause));
       });
     return () => {
       active = false;
@@ -420,22 +428,40 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [settingsOpen]);
+
   const refresh = () => {
     setRefreshing(true);
     setError(null);
     void api
       .refresh()
-      .then(setSnapshot)
-      .catch((cause: unknown) =>
-        setError(cause instanceof Error ? cause.message : "Unknown scan failure"),
-      )
+      .then((value) => {
+        setSnapshot(value);
+        setError(null);
+      })
+      .catch((cause: unknown) => setError(errorMessage(cause)))
       .finally(() => setRefreshing(false));
   };
   const updatePreferences = (patch: UsagePreferencesPatch) => {
-    void api.updatePreferences(patch).then(setPreferences);
+    void api
+      .updatePreferences(patch)
+      .then((value) => {
+        setPreferences(value);
+        setError(null);
+      })
+      .catch((cause: unknown) => setError(errorMessage(cause)));
   };
 
-  if (error !== null) return <ErrorView message={error} onRetry={refresh} />;
+  if (error !== null && (snapshot === null || preferences === null)) {
+    return <ErrorView message={error} onRetry={refresh} />;
+  }
   if (snapshot === null || preferences === null) return <LoadingView />;
 
   const summary = snapshot.ranges[range];
@@ -471,7 +497,7 @@ export function App() {
           <button
             type="button"
             className="icon-button"
-            aria-label="Refresh usage"
+            aria-label={refreshing ? "Refreshing usage" : "Refresh usage"}
             onClick={refresh}
             disabled={refreshing}
           >
@@ -483,6 +509,7 @@ export function App() {
               className={`icon-button${settingsOpen ? " active" : ""}`}
               aria-label="Usage settings"
               aria-expanded={settingsOpen}
+              aria-controls="usage-settings"
               onClick={() => setSettingsOpen((open) => !open)}
             >
               <SettingsIcon size={16} />
@@ -499,6 +526,14 @@ export function App() {
       </header>
 
       <main className="content">
+        {error === null ? null : (
+          <div className="error-banner" role="alert">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
         <section className="panel overview-panel" aria-labelledby="overview-heading">
           <h2 id="overview-heading" className="sr-only">
             Usage overview

@@ -27,7 +27,7 @@ interface RateLoadResult {
 }
 
 function finiteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 export function normalizeModelName(model: string): string {
@@ -116,8 +116,10 @@ export function priceTokens(
       totals.cachedInputTokens * rate.cacheReadCostPerToken +
       totals.cacheCreationTokens * rate.cacheCreationCostPerToken +
       totals.outputTokens * rate.outputCostPerToken,
-    cacheSavingsUsd:
+    cacheSavingsUsd: Math.max(
+      0,
       totals.cachedInputTokens * (rate.inputCostPerToken - rate.cacheReadCostPerToken),
+    ),
     priced: true,
   };
 }

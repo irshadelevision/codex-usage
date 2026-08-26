@@ -92,6 +92,29 @@ describe("parseCodexLine", () => {
     expect(parseCodexLine(usage, state)).not.toBeNull();
     expect(parseCodexLine(usage, state)).toBeNull();
   });
+
+  it("keeps identical token totals from separate turns", () => {
+    const state = initialCodexScanState();
+    const context = line("turn_context", "2026-08-26T10:00:01.000Z", {
+      type: "turn_context",
+      model: "gpt-5.6-sol",
+      effort: "low",
+    });
+    const first = tokenLine("2026-08-26T10:00:05.000Z", {
+      input_tokens: 100,
+      output_tokens: 20,
+    });
+    const second = tokenLine("2026-08-26T10:05:05.000Z", {
+      input_tokens: 100,
+      output_tokens: 20,
+    });
+
+    parseCodexLine(context, state);
+    expect(parseCodexLine(first, state)).not.toBeNull();
+    expect(parseCodexLine(first, state)).toBeNull();
+    parseCodexLine(context, state);
+    expect(parseCodexLine(second, state)).not.toBeNull();
+  });
 });
 
 function record(overrides: Partial<UsageRecord> = {}): UsageRecord {

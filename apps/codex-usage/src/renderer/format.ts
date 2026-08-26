@@ -8,24 +8,44 @@ const USD = new Intl.NumberFormat("en-US", {
 });
 
 const INTEGER = new Intl.NumberFormat("en-US");
+const COMPACT = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumSignificantDigits: 3,
+});
+const WINDOW_WITH_TIME = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+const WINDOW_DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const POINT_HOUR = new Intl.DateTimeFormat("en-US", { hour: "numeric" });
+const RESET = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function finiteOrZero(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
 
 export function formatUsd(value: number): string {
-  return USD.format(value);
+  return USD.format(finiteOrZero(value));
 }
 
 export function formatTokens(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumSignificantDigits: 3,
-  }).format(value);
+  return COMPACT.format(Math.max(0, finiteOrZero(value)));
 }
 
 export function formatCount(value: number): string {
-  return INTEGER.format(Math.round(value));
+  return INTEGER.format(Math.max(0, Math.round(finiteOrZero(value))));
 }
 
 export function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(Math.min(1, Math.max(0, finiteOrZero(value))) * 100).toFixed(1)}%`;
 }
 
 export function formatMode(value: string): string {
@@ -36,16 +56,9 @@ export function formatMode(value: string): string {
 
 export function formatWindow(summary: RangeSummary): string {
   if (summary.range === "24h") {
-    const format = new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    return `${format.format(new Date(summary.since))} – ${format.format(new Date(summary.until))}`;
+    return `${WINDOW_WITH_TIME.format(new Date(summary.since))} – ${WINDOW_WITH_TIME.format(new Date(summary.until))}`;
   }
-  const format = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-  return `${format.format(new Date(`${summary.since}T12:00:00`))} – ${format.format(new Date(`${summary.until}T12:00:00`))}`;
+  return `${WINDOW_DAY.format(new Date(`${summary.since}T12:00:00`))} – ${WINDOW_DAY.format(new Date(`${summary.until}T12:00:00`))}`;
 }
 
 export function rangeLabel(range: UsageRange): string {
@@ -57,14 +70,13 @@ export function rangeLabel(range: UsageRange): string {
 
 export function formatPointLabel(key: string, range: UsageRange): string {
   const date = new Date(range === "24h" ? key : `${key}T12:00:00`);
-  return new Intl.DateTimeFormat(
-    "en-US",
-    range === "24h" ? { hour: "numeric" } : { month: "short", day: "numeric" },
-  ).format(date);
+  return (range === "24h" ? POINT_HOUR : WINDOW_DAY).format(date);
 }
 
 export function formatUpdatedAt(value: string): string {
-  const elapsed = Math.max(0, Date.now() - Date.parse(value));
+  const updatedAt = Date.parse(value);
+  if (Number.isNaN(updatedAt)) return "Update time unavailable";
+  const elapsed = Math.max(0, Date.now() - updatedAt);
   if (elapsed < 60_000) return "Updated just now";
   const minutes = Math.floor(elapsed / 60_000);
   if (minutes < 60) return `Updated ${minutes}m ago`;
@@ -74,11 +86,7 @@ export function formatUpdatedAt(value: string): string {
 
 export function formatResetAt(value: string | null): string {
   if (value === null) return "Reset time unavailable";
-  return `Resets ${new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value))}`;
+  const resetAt = new Date(value);
+  if (Number.isNaN(resetAt.getTime())) return "Reset time unavailable";
+  return `Resets ${RESET.format(resetAt)}`;
 }

@@ -63,4 +63,23 @@ describe("parseRateLimitResponse", () => {
     expect(result.codex).toBeNull();
     expect(result.spark).toBeNull();
   });
+
+  it("ignores an invalid reset timestamp without failing the refresh", () => {
+    const result = parseRateLimitResponse(
+      {
+        rateLimits: {
+          limitId: "codex",
+          primary: {
+            usedPercent: 12,
+            windowDurationMins: 10_080,
+            resetsAt: Number.MAX_VALUE,
+          },
+        },
+      },
+      "2026-08-26T12:00:00.000Z",
+    );
+
+    expect(result.status).toBe("available");
+    expect(result.codex?.resetsAt).toBeNull();
+  });
 });

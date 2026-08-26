@@ -1,4 +1,5 @@
 import * as NodeFSP from "node:fs/promises";
+import * as NodePath from "node:path";
 
 import type {
   MenuBarDisplay,
@@ -49,6 +50,7 @@ function decodePreferences(value: unknown): UsagePreferences {
 export class PreferencesStore {
   readonly #path: string;
   #value: UsagePreferences = DEFAULT_PREFERENCES;
+  #writeQueue: Promise<void> = Promise.resolve();
 
   constructor(path: string) {
     this.#path = path;
@@ -68,8 +70,21 @@ export class PreferencesStore {
   }
 
   async update(patch: UsagePreferencesPatch): Promise<UsagePreferences> {
-    this.#value = decodePreferences({ ...this.#value, ...patch });
-    await NodeFSP.writeFile(this.#path, JSON.stringify(this.#value, null, 2), "utf8");
-    return this.#value;
+    let next = this.#value;
+    const update = this.#writeQueue.then(async () => {
+      next = decodePreferences({ ...this.#value, ...patch });
+      const temporaryPath = `${this.#path}.tmp`;
+      await NodeFSP.mkdir(NodePath.dirname(this.#path), { recursive: true });
+      try {
+        await NodeFSP.writeFile(temporaryPath, JSON.stringify(next, null, 2), "utf8");
+        await NodeFSP.rename(temporaryPath, this.#path);
+      } finally {
+        await NodeFSP.rm(temporaryPath, { force: true }).catch(() => undefined);
+      }
+      this.#value = next;
+    });
+    this.#writeQueue = update.catch(() => undefined);
+    await update;
+    return next;
   }
 }

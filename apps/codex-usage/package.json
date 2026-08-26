@@ -1,6 +1,6 @@
 {
   "name": "@codex-usage/app",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "A private, local-first macOS dashboard for Codex usage.",
   "author": "Codex Usage Contributors",
@@ -13,6 +13,7 @@
     "dist:mac": "pnpm run build && electron-builder --mac dmg",
     "start": "electron dist-electron/main.cjs",
     "test": "vp test run --passWithNoTests",
+    "lint": "vp lint --report-unused-disable-directives",
     "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {

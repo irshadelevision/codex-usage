@@ -18,7 +18,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const MTIME_SLACK_MS = 36 * 60 * 60 * 1000;
 const FORK_COPY_MAX_GAP_MS = 1000;
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 const EMPTY_TOTALS: TokenTotals = {
   uncachedInputTokens: 0,
@@ -161,6 +161,9 @@ export function parseCodexLine(line: string, state: CodexScanState): UsageRecord
   if (record["type"] === "turn_context") {
     if (typeof payloadRecord["model"] === "string") state.model = payloadRecord["model"];
     state.mode = normalizeMode(payloadRecord["effort"] ?? payloadRecord["reasoning_effort"]);
+    // The CLI can emit the same token totals for two different turns. Only
+    // de-duplicate repeated events within the current turn.
+    state.lastUsageSignature = null;
     return null;
   }
 
@@ -264,16 +267,29 @@ async function listTranscriptFiles(root: string, sinceMtimeMs: number): Promise<
   return found;
 }
 
+function isTokenTotals(value: unknown): value is TokenTotals {
+  if (typeof value !== "object" || value === null) return false;
+  const totals = value as Record<string, unknown>;
+  return [
+    totals["uncachedInputTokens"],
+    totals["cachedInputTokens"],
+    totals["cacheCreationTokens"],
+    totals["outputTokens"],
+    totals["reasoningTokens"],
+  ].every((total) => typeof total === "number" && Number.isFinite(total) && total >= 0);
+}
+
 function isUsageRecord(value: unknown): value is UsageRecord {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
   return (
     typeof record["timestampMs"] === "number" &&
+    Number.isFinite(record["timestampMs"]) &&
+    record["timestampMs"] >= 0 &&
     typeof record["model"] === "string" &&
     typeof record["mode"] === "string" &&
     typeof record["sessionId"] === "string" &&
-    typeof record["totals"] === "object" &&
-    record["totals"] !== null
+    isTokenTotals(record["totals"])
   );
 }
 

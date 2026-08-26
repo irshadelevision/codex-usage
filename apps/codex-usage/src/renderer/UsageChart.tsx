@@ -46,7 +46,9 @@ function curvePath(points: readonly Point[]): string {
 }
 
 export function niceScale(peak: number, count: number) {
-  if (peak <= 0) return { max: 0, ticks: [0] as readonly number[] };
+  if (!Number.isFinite(peak) || peak <= 0 || !Number.isFinite(count) || count <= 0) {
+    return { max: 0, ticks: [0] as readonly number[] };
+  }
   const rawStep = peak / count;
   const magnitude = 10 ** Math.floor(Math.log10(rawStep));
   const normalized = rawStep / magnitude;
@@ -67,9 +69,10 @@ export function UsageChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const format = metric === "cost" ? formatUsd : formatTokens;
   const { area, line, points, ticks, toY } = useMemo(() => {
-    const values = summary.series.map((point) =>
-      metric === "cost" ? point.costUsd : point.totalTokens,
-    );
+    const values = summary.series.map((point) => {
+      const value = metric === "cost" ? point.costUsd : point.totalTokens;
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    });
     const peak = values.reduce((highest, value) => Math.max(highest, value), 0);
     const scale = niceScale(peak, TICK_COUNT);
     const toY = (value: number) =>

@@ -35,4 +35,15 @@ describe("usage pricing", () => {
     });
     expect(result).toEqual({ costUsd: 0, cacheSavingsUsd: 0, priced: false });
   });
+
+  it("rejects negative pricing data", () => {
+    const rates = parseRateTable({
+      "openai/invalid": {
+        input_cost_per_token: -1,
+        output_cost_per_token: 1e-6,
+      },
+    });
+
+    expect(rates.size).toBe(0);
+  });
 });

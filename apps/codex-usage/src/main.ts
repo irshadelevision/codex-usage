@@ -1,7 +1,14 @@
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
-import { app, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  type MenuItemConstructorOptions,
+} from "electron";
 
 import type { UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
 import { MenuBarController } from "./main/menuBar.ts";
@@ -23,13 +30,22 @@ let refreshInFlight: Promise<UsageSnapshot> | null = null;
 let quitting = false;
 let refreshTimer: NodeJS.Timeout | null = null;
 
+function reportBackgroundRefreshFailure(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  console.error(`[Codex Usage] Background refresh failed: ${message}`);
+}
+
+function refreshInBackground() {
+  void refreshUsage().catch(reportBackgroundRefreshFailure);
+}
+
 const sessionsPath = NodePath.join(
   process.env["CODEX_HOME"]?.trim() || NodePath.join(app.getPath("home"), ".codex"),
   "sessions",
 );
 const userDataPath = app.getPath("userData");
 const preferences = new PreferencesStore(NodePath.join(userDataPath, "preferences.json"));
-const rateLimitReader = new CodexRateLimitReader(app.getPath("home"));
+const rateLimitReader = new CodexRateLimitReader(app.getPath("home"), app.getVersion());
 const scanner = new CodexUsageScanner({
   sessionsPath,
   scanCachePath: NodePath.join(userDataPath, "usage-scan-cache.json"),
@@ -101,10 +117,10 @@ async function createWindow() {
     title: "Codex Usage",
     width: 1180,
     height: 820,
-    minWidth: 900,
-    minHeight: 650,
+    minWidth: 720,
+    minHeight: 540,
     show: false,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#000000",
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 18, y: 18 },
     webPreferences: {
@@ -137,7 +153,7 @@ function installApplicationMenu() {
       submenu: [
         { role: "about" },
         { type: "separator" },
-        { label: "Refresh Usage", accelerator: "CmdOrCtrl+R", click: () => void refreshUsage() },
+        { label: "Refresh Usage", accelerator: "CmdOrCtrl+R", click: refreshInBackground },
         { type: "separator" },
         { role: "hide" },
         { role: "hideOthers" },
@@ -185,10 +201,15 @@ async function start() {
   app.setLoginItemSettings({ openAtLogin: initialPreferences.launchAtLogin });
   menuBar.sync(null, initialPreferences);
   await createWindow();
-  void refreshUsage();
+  refreshInBackground();
 
-  refreshTimer = setInterval(() => void refreshUsage(), 5 * 60 * 1000);
+  refreshTimer = setInterval(refreshInBackground, 5 * 60 * 1000);
   refreshTimer.unref();
 }
 
-void start();
+void start().catch((cause: unknown) => {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  console.error(`[Codex Usage] Startup failed: ${message}`);
+  dialog.showErrorBox("Codex Usage could not start", message);
+  app.quit();
+});

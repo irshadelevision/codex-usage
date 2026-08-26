@@ -30,6 +30,23 @@ const DISPLAY_LABELS: Record<MenuBarDisplay, string> = {
   "icon-only": "Icon only",
 };
 
+const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumSignificantDigits: 3,
+});
+const RESET_FORMAT = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function runMenuAction(action: Promise<unknown>) {
+  void action.catch((cause: unknown) => {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    console.error(`[Codex Usage] Menu action failed: ${message}`);
+  });
+}
+
 function createMenuBarIcon() {
   const candidates = [
     NodePath.join(process.resourcesPath, "assets", "trayTemplate.png"),
@@ -46,10 +63,7 @@ function createMenuBarIcon() {
 }
 
 function formatTokens(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumSignificantDigits: 3,
-  }).format(value);
+  return TOKEN_FORMAT.format(value);
 }
 
 function formatRangeDisplay(summary: RangeSummary, display: MenuBarDisplay): string {
@@ -64,11 +78,9 @@ function formatWeeklyLimit(limit: CodexWeeklyRateLimit | null): string {
 
 function formatReset(limit: CodexWeeklyRateLimit | null): string {
   if (limit?.resetsAt === null || limit === null) return "Reset time unavailable";
-  return `Resets ${new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(limit.resetsAt))}`;
+  const resetAt = new Date(limit.resetsAt);
+  if (Number.isNaN(resetAt.getTime())) return "Reset time unavailable";
+  return `Resets ${RESET_FORMAT.format(resetAt)}`;
 }
 
 function isRangeDisplay(display: MenuBarDisplay): boolean {
@@ -191,7 +203,7 @@ export class MenuBarController {
           label,
           type: "radio" as const,
           checked: preferences.menuBarRange === range,
-          click: () => void this.#input.updatePreferences({ menuBarRange: range }),
+          click: () => runMenuAction(this.#input.updatePreferences({ menuBarRange: range })),
         })),
       },
       {
@@ -200,14 +212,14 @@ export class MenuBarController {
           label: DISPLAY_LABELS[display],
           type: "radio" as const,
           checked: preferences.menuBarDisplay === display,
-          click: () => void this.#input.updatePreferences({ menuBarDisplay: display }),
+          click: () => runMenuAction(this.#input.updatePreferences({ menuBarDisplay: display })),
         })),
       },
       { type: "separator" },
       {
         label: "Refresh",
         accelerator: "CmdOrCtrl+R",
-        click: () => void this.#input.refresh(),
+        click: () => runMenuAction(this.#input.refresh()),
       },
       {
         label: "Open Codex Usage",
@@ -219,13 +231,15 @@ export class MenuBarController {
         label: "Launch at Login",
         type: "checkbox",
         checked: preferences.launchAtLogin,
-        click: (item) => void this.#input.updatePreferences({ launchAtLogin: item.checked }),
+        click: (item) =>
+          runMenuAction(this.#input.updatePreferences({ launchAtLogin: item.checked })),
       },
       {
         label: "Show in Menu Bar",
         type: "checkbox",
         checked: preferences.showInMenuBar,
-        click: (item) => void this.#input.updatePreferences({ showInMenuBar: item.checked }),
+        click: (item) =>
+          runMenuAction(this.#input.updatePreferences({ showInMenuBar: item.checked })),
       },
       { type: "separator" },
       { label: "Quit", accelerator: "CmdOrCtrl+Q", click: this.#input.quit },
