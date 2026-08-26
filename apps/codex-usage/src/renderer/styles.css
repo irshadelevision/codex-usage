@@ -237,6 +237,25 @@ button:disabled {
   cursor: default;
 }
 
+.settings-about {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-top: 1px solid var(--border);
+  padding: 0 4px;
+  background: transparent;
+  color: #d7d7d7;
+  font-size: 12px;
+  text-align: left;
+}
+
+.settings-about:hover {
+  color: var(--foreground);
+}
+
 .settings-note {
   margin: 8px 4px 2px;
   border-top: 1px solid var(--border);
@@ -886,6 +905,94 @@ th.numeric {
   color: #000;
   font-size: 11px;
   font-weight: 560;
+}
+
+.about-shell {
+  -webkit-app-region: drag;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  flex-direction: column;
+  padding: 62px 32px 28px;
+  background: #000;
+  text-align: center;
+}
+
+.about-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 17px;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 55%);
+}
+
+.about-shell h1 {
+  margin: 15px 0 0;
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.about-version,
+.about-author {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.about-version {
+  margin-top: 4px;
+}
+
+.about-update {
+  width: 100%;
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 17px;
+}
+
+.about-update h2 {
+  margin: 0;
+  color: #dcdcdc;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.about-update p {
+  min-height: 36px;
+  margin: 8px auto 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.about-actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.secondary-button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 0 12px;
+  background: rgb(255 255 255 / 4%);
+  color: var(--foreground);
+  font-size: 11px;
+}
+
+.secondary-button:hover {
+  background: var(--surface-hover);
 }
 
 .sr-only {

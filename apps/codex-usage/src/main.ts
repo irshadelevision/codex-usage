@@ -7,14 +7,16 @@ import {
   dialog,
   ipcMain,
   Menu,
+  shell,
   type MenuItemConstructorOptions,
 } from "electron";
 
-import type { UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
+import type { AppInfo, UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
 import { MenuBarController } from "./main/menuBar.ts";
 import { PreferencesStore } from "./main/preferences.ts";
 import { CodexRateLimitReader } from "./main/rateLimits.ts";
 import { CodexUsageScanner } from "./main/scanner.ts";
+import { checkForUpdates, isTrustedReleaseUrl } from "./main/updateChecker.ts";
 
 const currentDirectory = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 const devUrl = process.env["CODEX_USAGE_DEV_URL"]?.trim();
@@ -24,7 +26,9 @@ if (!gotSingleInstanceLock) app.quit();
 
 app.setName("Codex Usage");
 
+const APP_AUTHOR = "Irshad Ibrahim";
 let mainWindow: BrowserWindow | null = null;
+let aboutWindow: BrowserWindow | null = null;
 let latestSnapshot: UsageSnapshot | null = null;
 let refreshInFlight: Promise<UsageSnapshot> | null = null;
 let quitting = false;
@@ -68,6 +72,15 @@ function openWindow() {
   mainWindow.focus();
 }
 
+function reportAboutWindowFailure(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  console.error(`[Codex Usage] About window failed: ${message}`);
+}
+
+function openAboutWindowInBackground() {
+  void createAboutWindow().catch(reportAboutWindowFailure);
+}
+
 async function refreshUsage(): Promise<UsageSnapshot> {
   if (refreshInFlight !== null) return refreshInFlight;
   const nowMs = Date.now();
@@ -95,6 +108,7 @@ async function updatePreferences(patch: UsagePreferencesPatch) {
 
 const menuBar = new MenuBarController({
   openWindow,
+  openAboutWindow: openAboutWindowInBackground,
   refresh: async () => {
     await refreshUsage();
   },
@@ -106,6 +120,19 @@ const menuBar = new MenuBarController({
     app.quit();
   },
 });
+
+async function loadRendererView(window: BrowserWindow, view?: string) {
+  if (devUrl) {
+    const url = new URL(devUrl);
+    if (view !== undefined) url.searchParams.set("view", view);
+    await window.loadURL(url.toString());
+    return;
+  }
+  await window.loadFile(
+    NodePath.join(currentDirectory, "../dist-renderer/index.html"),
+    view === undefined ? undefined : { query: { view } },
+  );
+}
 
 async function createWindow() {
   if (mainWindow !== null && !mainWindow.isDestroyed()) {
@@ -142,8 +169,47 @@ async function createWindow() {
     if (mainWindow === window) mainWindow = null;
   });
 
-  if (devUrl) await window.loadURL(devUrl);
-  else await window.loadFile(NodePath.join(currentDirectory, "../dist-renderer/index.html"));
+  await loadRendererView(window);
+}
+
+async function createAboutWindow() {
+  if (aboutWindow !== null && !aboutWindow.isDestroyed()) {
+    aboutWindow.show();
+    aboutWindow.focus();
+    return;
+  }
+
+  const parent =
+    mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible()
+      ? mainWindow
+      : undefined;
+  const window = new BrowserWindow({
+    title: "About Codex Usage",
+    ...(parent === undefined ? {} : { parent }),
+    width: 420,
+    height: 430,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    show: false,
+    backgroundColor: "#000000",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 18, y: 18 },
+    webPreferences: {
+      preload: NodePath.join(currentDirectory, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  aboutWindow = window;
+  window.once("ready-to-show", () => window.show());
+  window.on("closed", () => {
+    if (aboutWindow === window) aboutWindow = null;
+  });
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  await loadRendererView(window, "about");
 }
 
 function installApplicationMenu() {
@@ -151,7 +217,7 @@ function installApplicationMenu() {
     {
       label: "Codex Usage",
       submenu: [
-        { role: "about" },
+        { label: "About Codex Usage", click: openAboutWindowInBackground },
         { type: "separator" },
         { label: "Refresh Usage", accelerator: "CmdOrCtrl+R", click: refreshInBackground },
         { type: "separator" },
@@ -185,6 +251,18 @@ ipcMain.handle("usage:get-preferences", () => preferences.get());
 ipcMain.handle("usage:update-preferences", (_event, patch: UsagePreferencesPatch) =>
   updatePreferences(patch),
 );
+ipcMain.handle(
+  "app:get-info",
+  () => ({ name: app.getName(), version: app.getVersion(), author: APP_AUTHOR }) satisfies AppInfo,
+);
+ipcMain.handle("app:check-for-updates", () => checkForUpdates(app.getVersion()));
+ipcMain.handle("app:open-about", () => createAboutWindow());
+ipcMain.handle("app:open-release", async (_event, url: unknown) => {
+  if (typeof url !== "string" || !isTrustedReleaseUrl(url)) {
+    throw new Error("The release URL is not trusted.");
+  }
+  await shell.openExternal(url);
+});
 
 app.on("second-instance", openWindow);
 app.on("activate", openWindow);

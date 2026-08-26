@@ -1,9 +1,9 @@
 {
   "name": "@codex-usage/app",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "private": true,
   "description": "A private, local-first macOS dashboard for Codex usage.",
-  "author": "Codex Usage Contributors",
+  "author": "Irshad Ibrahim",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {

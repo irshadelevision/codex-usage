@@ -171,6 +171,17 @@ export function createSampleApi(): CodexUsageApi {
       for (const listener of preferenceListeners) listener(preferences);
       return Promise.resolve(preferences);
     },
+    getAppInfo: () =>
+      Promise.resolve({ name: "Codex Usage", version: "0.1.13", author: "Irshad Ibrahim" }),
+    checkForUpdates: () =>
+      Promise.resolve({
+        currentVersion: "0.1.13",
+        latestVersion: "0.1.13",
+        updateAvailable: false,
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.13",
+      }),
+    openAboutWindow: () => Promise.resolve(),
+    openRelease: () => Promise.resolve(),
     onSnapshot: (listener) => {
       snapshotListeners.add(listener);
       return () => snapshotListeners.delete(listener);

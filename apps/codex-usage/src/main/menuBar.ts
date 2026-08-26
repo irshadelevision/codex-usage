@@ -154,6 +154,7 @@ function titleCase(value: string): string {
 
 interface MenuBarControllerInput {
   readonly openWindow: () => void;
+  readonly openAboutWindow: () => void;
   readonly refresh: () => Promise<void>;
   readonly updatePreferences: (patch: UsagePreferencesPatch) => Promise<void>;
   readonly quit: () => void;
@@ -333,6 +334,7 @@ export class MenuBarController {
           runMenuAction(this.#input.updatePreferences({ showInMenuBar: item.checked })),
       },
       { type: "separator" },
+      { label: "About Codex Usage", click: this.#input.openAboutWindow },
       { label: "Quit", accelerator: "CmdOrCtrl+Q", click: this.#input.quit },
     ];
 

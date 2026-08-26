@@ -1,10 +1,9 @@
-import { CheckIcon, RefreshCwIcon, SettingsIcon, XIcon } from "lucide-react";
+import { CheckIcon, InfoIcon, RefreshCwIcon, SettingsIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type {
   BreakdownKind,
   CodexWeeklyRateLimit,
-  CodexUsageApi,
   MenuBarDisplay,
   RangeSummary,
   UsageMetric,
@@ -25,10 +24,8 @@ import {
   formatWindow,
   rangeLabel,
 } from "./format.ts";
-import { createSampleApi } from "./sampleData.ts";
+import { api } from "./api.ts";
 import { UsageChart } from "./UsageChart.tsx";
-
-const api: CodexUsageApi = window.codexUsage ?? createSampleApi();
 
 const METRICS = ["cost", "tokens"] as const;
 const BREAKDOWNS = ["models", "modes"] as const;
@@ -117,10 +114,12 @@ function ToggleRow({
 function SettingsPopover({
   preferences,
   onClose,
+  onOpenAbout,
   onUpdate,
 }: {
   readonly preferences: UsagePreferences;
   readonly onClose: () => void;
+  readonly onOpenAbout: () => void;
   readonly onUpdate: (patch: UsagePreferencesPatch) => void;
 }) {
   const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
@@ -180,6 +179,10 @@ function SettingsPopover({
           ))}
         </select>
       </label>
+      <button type="button" className="settings-about" onClick={onOpenAbout}>
+        <span>About Codex Usage</span>
+        <InfoIcon size={14} />
+      </button>
       <p className="settings-note">
         Click the status item to open the native usage menu. Icon-only display always keeps the icon
         visible.
@@ -495,6 +498,10 @@ export function App() {
       })
       .catch((cause: unknown) => setError(errorMessage(cause)));
   };
+  const openAbout = () => {
+    setSettingsOpen(false);
+    void api.openAboutWindow().catch((cause: unknown) => setError(errorMessage(cause)));
+  };
 
   if (error !== null && (snapshot === null || preferences === null)) {
     return <ErrorView message={error} onRetry={refresh} />;
@@ -555,6 +562,7 @@ export function App() {
               <SettingsPopover
                 preferences={preferences}
                 onClose={() => setSettingsOpen(false)}
+                onOpenAbout={openAbout}
                 onUpdate={updatePreferences}
               />
             ) : null}

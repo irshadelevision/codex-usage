@@ -106,11 +106,28 @@ export interface UsagePreferences {
 
 export type UsagePreferencesPatch = Partial<UsagePreferences>;
 
+export interface AppInfo {
+  readonly name: string;
+  readonly version: string;
+  readonly author: string;
+}
+
+export interface UpdateCheckResult {
+  readonly currentVersion: string;
+  readonly latestVersion: string;
+  readonly updateAvailable: boolean;
+  readonly releaseUrl: string;
+}
+
 export interface CodexUsageApi {
   readonly getSnapshot: () => Promise<UsageSnapshot>;
   readonly refresh: () => Promise<UsageSnapshot>;
   readonly getPreferences: () => Promise<UsagePreferences>;
   readonly updatePreferences: (patch: UsagePreferencesPatch) => Promise<UsagePreferences>;
+  readonly getAppInfo: () => Promise<AppInfo>;
+  readonly checkForUpdates: () => Promise<UpdateCheckResult>;
+  readonly openAboutWindow: () => Promise<void>;
+  readonly openRelease: (url: string) => Promise<void>;
   readonly onSnapshot: (listener: (snapshot: UsageSnapshot) => void) => () => void;
   readonly onPreferences: (listener: (preferences: UsagePreferences) => void) => () => void;
 }
