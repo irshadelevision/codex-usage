@@ -9,11 +9,12 @@ The app includes:
 - hourly and daily cost/token graphs;
 - processed, cached, uncached, output, and reasoning token totals;
 - model and reasoning-mode breakdowns;
-- live Codex and Spark weekly usage from the signed-in Codex CLI session;
+- live Codex and Spark weekly usage, reset countdowns, and reset dates from the signed-in Codex CLI session;
 - de-duplication for repeated token events and copied fork/subagent history;
 - LiteLLM pricing with a 24-hour offline cache;
 - a native macOS menu-bar icon and pull-down menu;
-- a configurable menu-bar value: cost, tokens, sessions, Codex weekly, Spark weekly, or icon only;
+- a configurable menu-bar value: cost, tokens, sessions, Codex/Spark weekly remaining,
+  Codex/Spark reset countdown plus date, or icon only;
 - optional launch at login.
 
 Subscription billing is separate from the API-equivalent estimate shown by the app.

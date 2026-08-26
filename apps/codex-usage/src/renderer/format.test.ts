@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  formatCount,
-  formatPercent,
-  formatResetAt,
-  formatTokens,
-  formatUpdatedAt,
-  formatUsd,
-} from "./format.ts";
+import { formatCount, formatPercent, formatTokens, formatUpdatedAt, formatUsd } from "./format.ts";
 
 describe("usage formatting", () => {
   it("keeps invalid numeric data from breaking the dashboard", () => {
@@ -20,6 +13,5 @@ describe("usage formatting", () => {
 
   it("falls back for invalid timestamps", () => {
     expect(formatUpdatedAt("not-a-date")).toBe("Update time unavailable");
-    expect(formatResetAt("not-a-date")).toBe("Reset time unavailable");
   });
 });

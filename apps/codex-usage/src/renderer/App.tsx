@@ -13,12 +13,12 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
+import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
   formatMode,
   formatPercent,
-  formatResetAt,
   formatTokens,
   formatUpdatedAt,
   formatUsd,
@@ -38,7 +38,9 @@ const MENU_BAR_DISPLAY_LABELS: Record<MenuBarDisplay, string> = {
   tokens: "Processed tokens",
   sessions: "Sessions",
   "codex-weekly": "Codex weekly remaining",
+  "codex-reset": "Codex reset time + date",
   "spark-weekly": "Spark weekly remaining",
+  "spark-reset": "Spark reset time + date",
   "icon-only": "Icon only",
 };
 
@@ -173,9 +175,11 @@ function SettingsPopover({
 function WeeklyLimitCard({
   label,
   limit,
+  nowMs,
 }: {
   readonly label: string;
   readonly limit: CodexWeeklyRateLimit | null;
+  readonly nowMs: number;
 }) {
   const usedPercent = limit?.usedPercent ?? 0;
   return (
@@ -196,7 +200,16 @@ function WeeklyLimitCard({
         >
           <i style={{ width: `${usedPercent}%` }} />
         </div>
-        <span>{limit === null ? "Weekly limit unavailable" : formatResetAt(limit.resetsAt)}</span>
+        <div className="rate-limit-schedule">
+          <span>
+            {limit === null
+              ? "Time remaining unavailable"
+              : formatResetRemaining(limit.resetsAt, nowMs)}
+          </span>
+          <time dateTime={limit?.resetsAt ?? undefined}>
+            {limit === null ? "Reset date unavailable" : formatResetDateTime(limit.resetsAt)}
+          </time>
+        </div>
       </div>
     </article>
   );
@@ -204,6 +217,14 @@ function WeeklyLimitCard({
 
 function WeeklyLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
   const limits = snapshot.rateLimits;
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const hasResetTime =
+    typeof limits.codex?.resetsAt === "string" || typeof limits.spark?.resetsAt === "string";
+  useEffect(() => {
+    if (!hasResetTime) return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [hasResetTime]);
   const status =
     limits.status === "stale"
       ? "Last known values"
@@ -220,8 +241,8 @@ function WeeklyLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
         <span>{status}</span>
       </div>
       <div className="rate-limits-grid">
-        <WeeklyLimitCard label="Codex usage" limit={limits.codex} />
-        <WeeklyLimitCard label="Spark usage" limit={limits.spark} />
+        <WeeklyLimitCard label="Codex usage" limit={limits.codex} nowMs={nowMs} />
+        <WeeklyLimitCard label="Spark usage" limit={limits.spark} nowMs={nowMs} />
       </div>
       {limits.message === null ? null : <p className="rate-limit-message">{limits.message}</p>}
     </section>

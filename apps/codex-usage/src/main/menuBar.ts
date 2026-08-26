@@ -11,6 +11,7 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
+import { formatMenuBarReset, formatResetDateTime } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS } from "../shared/types.ts";
 import { formatMenuBarUsd } from "./menuBarFormatting.ts";
 
@@ -26,7 +27,9 @@ const DISPLAY_LABELS: Record<MenuBarDisplay, string> = {
   tokens: "Processed tokens",
   sessions: "Sessions",
   "codex-weekly": "Codex weekly remaining",
+  "codex-reset": "Codex reset time + date",
   "spark-weekly": "Spark weekly remaining",
+  "spark-reset": "Spark reset time + date",
   "icon-only": "Icon only",
 };
 
@@ -34,12 +37,6 @@ const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumSignificantDigits: 3,
 });
-const RESET_FORMAT = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  hour: "numeric",
-  minute: "2-digit",
-});
-
 function runMenuAction(action: Promise<unknown>) {
   void action.catch((cause: unknown) => {
     const message = cause instanceof Error ? cause.message : String(cause);
@@ -72,22 +69,31 @@ function formatRangeDisplay(summary: RangeSummary, display: MenuBarDisplay): str
   return formatMenuBarUsd(summary.costUsd);
 }
 
-function formatWeeklyLimit(limit: CodexWeeklyRateLimit | null): string {
-  return limit === null ? "Unavailable" : `${limit.remainingPercent}% remaining`;
+function formatWeeklyLimit(limit: CodexWeeklyRateLimit | null, nowMs: number): string {
+  if (limit === null) return "Unavailable";
+  const reset = formatMenuBarReset(limit.resetsAt, nowMs);
+  return reset === "—"
+    ? `${limit.remainingPercent}% remaining`
+    : `${limit.remainingPercent}% remaining · ${reset}`;
 }
 
 function formatReset(limit: CodexWeeklyRateLimit | null): string {
-  if (limit?.resetsAt === null || limit === null) return "Reset time unavailable";
-  const resetAt = new Date(limit.resetsAt);
-  if (Number.isNaN(resetAt.getTime())) return "Reset time unavailable";
-  return `Resets ${RESET_FORMAT.format(resetAt)}`;
+  return limit === null ? "Reset date unavailable" : formatResetDateTime(limit.resetsAt);
 }
 
 function isRangeDisplay(display: MenuBarDisplay): boolean {
   return display === "cost" || display === "tokens" || display === "sessions";
 }
 
-function formatStatusTitle(snapshot: UsageSnapshot, preferences: UsagePreferences): string {
+function isResetDisplay(display: MenuBarDisplay): boolean {
+  return display === "codex-reset" || display === "spark-reset";
+}
+
+function formatStatusTitle(
+  snapshot: UsageSnapshot,
+  preferences: UsagePreferences,
+  nowMs: number,
+): string {
   if (preferences.menuBarDisplay === "icon-only") return "";
   if (preferences.menuBarDisplay === "codex-weekly") {
     const limit = snapshot.rateLimits.codex;
@@ -96,6 +102,13 @@ function formatStatusTitle(snapshot: UsageSnapshot, preferences: UsagePreference
   if (preferences.menuBarDisplay === "spark-weekly") {
     const limit = snapshot.rateLimits.spark;
     return limit === null ? "—" : `S ${limit.remainingPercent}%`;
+  }
+  if (preferences.menuBarDisplay === "codex-reset") {
+    return formatMenuBarReset(snapshot.rateLimits.codex?.resetsAt ?? null, nowMs);
+  }
+  if (preferences.menuBarDisplay === "spark-reset") {
+    const value = formatMenuBarReset(snapshot.rateLimits.spark?.resetsAt ?? null, nowMs);
+    return value === "—" ? value : `S ${value}`;
   }
   return formatRangeDisplay(snapshot.ranges[preferences.menuBarRange], preferences.menuBarDisplay);
 }
@@ -118,6 +131,7 @@ export class MenuBarController {
   #tray: Tray | null = null;
   #snapshot: UsageSnapshot | null = null;
   #preferences: UsagePreferences | null = null;
+  #countdownTimer: NodeJS.Timeout | null = null;
 
   constructor(input: MenuBarControllerInput) {
     this.#input = input;
@@ -135,12 +149,27 @@ export class MenuBarController {
       this.#tray.setToolTip("Codex Usage");
       this.#tray.on("click", () => this.#tray?.popUpContextMenu());
     }
+    this.#syncCountdownTimer();
     this.#render();
   }
 
   destroy() {
+    if (this.#countdownTimer !== null) clearInterval(this.#countdownTimer);
+    this.#countdownTimer = null;
     this.#tray?.destroy();
     this.#tray = null;
+  }
+
+  #syncCountdownTimer() {
+    const shouldRun =
+      this.#preferences !== null && isResetDisplay(this.#preferences.menuBarDisplay);
+    if (shouldRun && this.#countdownTimer === null) {
+      this.#countdownTimer = setInterval(() => this.#render(), 60_000);
+      this.#countdownTimer.unref();
+    } else if (!shouldRun && this.#countdownTimer !== null) {
+      clearInterval(this.#countdownTimer);
+      this.#countdownTimer = null;
+    }
   }
 
   #render() {
@@ -149,8 +178,9 @@ export class MenuBarController {
     if (tray === null || preferences === null) return;
 
     const snapshot = this.#snapshot;
+    const nowMs = Date.now();
     const selected = snapshot?.ranges[preferences.menuBarRange];
-    const statusTitle = snapshot === null ? "—" : formatStatusTitle(snapshot, preferences);
+    const statusTitle = snapshot === null ? "—" : formatStatusTitle(snapshot, preferences, nowMs);
     tray.setTitle(statusTitle.length === 0 ? "" : ` ${statusTitle}`);
 
     const summaryDisplay = isRangeDisplay(preferences.menuBarDisplay)
@@ -175,7 +205,7 @@ export class MenuBarController {
         sublabel:
           snapshot === null
             ? "Reading account limits…"
-            : formatWeeklyLimit(snapshot.rateLimits.codex),
+            : formatWeeklyLimit(snapshot.rateLimits.codex, nowMs),
         toolTip:
           snapshot === null ? "Reading account limits…" : formatReset(snapshot.rateLimits.codex),
         enabled: false,
@@ -185,7 +215,7 @@ export class MenuBarController {
         sublabel:
           snapshot === null
             ? "Reading account limits…"
-            : formatWeeklyLimit(snapshot.rateLimits.spark),
+            : formatWeeklyLimit(snapshot.rateLimits.spark, nowMs),
         toolTip:
           snapshot === null ? "Reading account limits…" : formatReset(snapshot.rateLimits.spark),
         enabled: false,

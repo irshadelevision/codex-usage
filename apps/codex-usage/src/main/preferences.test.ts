@@ -16,12 +16,14 @@ describe("PreferencesStore", () => {
       await Promise.all([
         store.update({ showInMenuBar: false }),
         store.update({ launchAtLogin: true }),
+        store.update({ menuBarDisplay: "codex-reset" }),
       ]);
 
       const reloaded = new PreferencesStore(path);
       expect(await reloaded.load()).toMatchObject({
         showInMenuBar: false,
         launchAtLogin: true,
+        menuBarDisplay: "codex-reset",
       });
     } finally {
       await NodeFSP.rm(directory, { recursive: true, force: true });

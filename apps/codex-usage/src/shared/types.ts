@@ -9,7 +9,9 @@ export const MENU_BAR_DISPLAYS = [
   "tokens",
   "sessions",
   "codex-weekly",
+  "codex-reset",
   "spark-weekly",
+  "spark-reset",
   "icon-only",
 ] as const;
 export type MenuBarDisplay = (typeof MENU_BAR_DISPLAYS)[number];

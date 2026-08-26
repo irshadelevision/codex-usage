@@ -20,13 +20,6 @@ const WINDOW_WITH_TIME = new Intl.DateTimeFormat("en-US", {
 });
 const WINDOW_DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 const POINT_HOUR = new Intl.DateTimeFormat("en-US", { hour: "numeric" });
-const RESET = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 function finiteOrZero(value: number): number {
   return Number.isFinite(value) ? value : 0;
@@ -82,11 +75,4 @@ export function formatUpdatedAt(value: string): string {
   if (minutes < 60) return `Updated ${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `Updated ${hours}h ago`;
-}
-
-export function formatResetAt(value: string | null): string {
-  if (value === null) return "Reset time unavailable";
-  const resetAt = new Date(value);
-  if (Number.isNaN(resetAt.getTime())) return "Reset time unavailable";
-  return `Resets ${RESET.format(resetAt)}`;
 }
