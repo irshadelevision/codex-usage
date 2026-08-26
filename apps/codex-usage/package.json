@@ -1,0 +1,61 @@
+{
+  "name": "@codex-usage/app",
+  "version": "0.1.5",
+  "private": true,
+  "description": "A private, local-first macOS dashboard for Codex usage.",
+  "author": "Codex Usage Contributors",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "build": "vp build && vp pack",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vp dev --host 127.0.0.1 --port 4178",
+    "dist:mac": "pnpm run build && electron-builder --mac dmg",
+    "start": "electron dist-electron/main.cjs",
+    "test": "vp test run --passWithNoTests",
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "~19.2.14",
+    "@types/react-dom": "~19.2.3",
+    "@vitejs/plugin-react": "^6.0.0",
+    "electron": "41.5.0",
+    "electron-builder": "26.15.6",
+    "lucide-react": "^0.564.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "build": {
+    "appId": "com.codexusage.app",
+    "productName": "Codex Usage",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist-renderer/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "trayTemplate.png",
+          "trayTemplate@2x.png"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png",
+      "target": [
+        "dmg"
+      ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "erasableSyntaxOnly": false,
+    "verbatimModuleSyntax": false,
+    "jsx": "react-jsx",
+    "types": ["node", "electron", "vite/client"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "globalDate": "off",
+          "globalConsole": "off",
+          "globalFetch": "off",
+          "globalTimers": "off",
+          "nodeBuiltinImport": "off"
+        }
+      }
+    ]
+  },
+  "include": ["src", "scripts", "vite.config.ts"]
+}
