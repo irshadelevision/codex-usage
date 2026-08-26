@@ -4,19 +4,14 @@ import * as NodePath from "node:path";
 
 import { describe, expect, it } from "vite-plus/test";
 
+import { LIVE_USAGE_CURRENCIES } from "../shared/types.ts";
 import { ExchangeRateReader } from "./exchangeRates.ts";
 
 const NOW_MS = Date.parse("2026-08-27T00:00:00.000Z");
 const DAY_MS = 24 * 60 * 60 * 1000;
-const RATES = {
-  AUD: 1.3963,
-  CNY: 6.718,
-  EUR: 0.85656,
-  GBP: 0.73383,
-  INR: 95.48,
-  KRW: 1_383.61,
-  RUB: 84.21,
-} as const;
+const RATES = Object.fromEntries(
+  LIVE_USAGE_CURRENCIES.map((currency, index) => [currency, (index + 11) / 10]),
+) as Readonly<Record<(typeof LIVE_USAGE_CURRENCIES)[number], number>>;
 
 function responseRows() {
   return Object.entries(RATES).map(([quote, rate]) => ({
@@ -46,7 +41,9 @@ describe("ExchangeRateReader", () => {
         rates: RATES,
       });
       expect(requestUrl).toContain("base=USD");
-      expect(requestUrl).toContain("INR");
+      expect(new URL(requestUrl).searchParams.get("quotes")?.split(",")).toEqual([
+        ...LIVE_USAGE_CURRENCIES,
+      ]);
       expect(JSON.parse(await NodeFSP.readFile(cachePath, "utf8"))).toMatchObject({ rates: RATES });
     } finally {
       await NodeFSP.rm(directory, { recursive: true, force: true });
@@ -84,6 +81,6 @@ describe("ExchangeRateReader", () => {
 
     expect(result.status).toBe("unavailable");
     expect(result.rates).toEqual({});
-    expect(result.message).toContain("RUB");
+    expect(result.message).toContain("ZAR");
   });
 });

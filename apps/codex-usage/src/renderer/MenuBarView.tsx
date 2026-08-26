@@ -2,7 +2,11 @@ import { ArrowUpRightIcon, InfoIcon, PowerIcon, RefreshCwIcon, Settings2Icon } f
 import { useEffect, useState } from "react";
 
 import appIconUrl from "../../build/icon.png";
-import { USAGE_CURRENCY_LABELS, usageCurrencyRateNote } from "../shared/currency.ts";
+import {
+  USAGE_CURRENCY_GROUPS,
+  USAGE_CURRENCY_LABELS,
+  usageCurrencyRateNote,
+} from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import type {
@@ -13,7 +17,7 @@ import type {
   UsagePreferencesPatch,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
+import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
   formatCurrency,
@@ -323,10 +327,14 @@ export function MenuBarView() {
                 updatePreferences({ currency: event.target.value as UsageCurrency })
               }
             >
-              {USAGE_CURRENCIES.map((currency) => (
-                <option key={currency} value={currency}>
-                  {USAGE_CURRENCY_LABELS[currency]}
-                </option>
+              {USAGE_CURRENCY_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.currencies.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {USAGE_CURRENCY_LABELS[currency]}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>

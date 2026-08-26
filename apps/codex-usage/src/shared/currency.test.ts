@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { ExchangeRateSnapshot, UsageCurrency } from "./types.ts";
-import { convertUsd, usageCurrencyRateNote } from "./currency.ts";
+import { convertUsd, USAGE_CURRENCY_GROUPS, usageCurrencyRateNote } from "./currency.ts";
+import { USAGE_CURRENCIES } from "./types.ts";
 
 const exchangeRates: ExchangeRateSnapshot = {
   status: "fresh",
@@ -36,5 +37,14 @@ describe("convertUsd", () => {
     expect(usageCurrencyRateNote("INR", exchangeRates)).toBe(
       "Daily rate for Aug 26, 2026: 1 USD = 95.48 INR. Source: Frankfurter.",
     );
+  });
+});
+
+describe("currency selection", () => {
+  it("places every supported currency in exactly one regional group", () => {
+    const grouped = USAGE_CURRENCY_GROUPS.flatMap((group) => group.currencies);
+    expect(grouped).toHaveLength(53);
+    expect(grouped).toHaveLength(new Set(grouped).size);
+    expect(new Set(grouped)).toEqual(new Set(USAGE_CURRENCIES));
   });
 });

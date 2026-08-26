@@ -4,7 +4,7 @@ import * as NodePath from "node:path";
 import type { ExchangeRateSnapshot, UsageCurrency } from "../shared/types.ts";
 import { LIVE_USAGE_CURRENCIES } from "../shared/types.ts";
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const SOURCE = "Frankfurter" as const;

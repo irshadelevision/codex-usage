@@ -8,6 +8,7 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
+import { LIVE_USAGE_CURRENCIES } from "../shared/types.ts";
 
 const rangeSize: Record<UsageRange, number> = { "24h": 24, "7d": 7, "30d": 30, "90d": 90 };
 const rangeScale: Record<UsageRange, number> = { "24h": 0.48, "7d": 1, "30d": 3.1, "90d": 8.2 };
@@ -114,6 +115,7 @@ function sampleSummary(range: UsageRange, nowMs: number): RangeSummary {
 
 function makeSnapshot(): UsageSnapshot {
   const nowMs = Date.now();
+  const sampleRateDate = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   return {
     readAt: new Date(nowMs).toISOString(),
     sourcePath: "~/.codex/sessions",
@@ -129,24 +131,12 @@ function makeSnapshot(): UsageSnapshot {
       status: "fresh",
       source: "Frankfurter",
       fetchedAt: new Date(nowMs - 3_600_000).toISOString(),
-      rates: {
-        AUD: 1.3963,
-        CNY: 6.718,
-        EUR: 0.85656,
-        GBP: 0.73383,
-        INR: 95.48,
-        KRW: 1_383.61,
-        RUB: 84.21,
-      },
-      rateDates: {
-        AUD: "2026-08-26",
-        CNY: "2026-08-26",
-        EUR: "2026-08-26",
-        GBP: "2026-08-26",
-        INR: "2026-08-26",
-        KRW: "2026-08-26",
-        RUB: "2026-08-26",
-      },
+      rates: Object.fromEntries(
+        LIVE_USAGE_CURRENCIES.map((currency, index) => [currency, (index + 11) / 10]),
+      ),
+      rateDates: Object.fromEntries(
+        LIVE_USAGE_CURRENCIES.map((currency) => [currency, sampleRateDate]),
+      ),
       message: null,
     },
     rateLimits: {
@@ -206,15 +196,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.19", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.20", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.19",
-        latestVersion: "0.1.19",
+        currentVersion: "0.1.20",
+        latestVersion: "0.1.20",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.19",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.20",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.19/Codex.Usage-0.1.19-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.20/Codex.Usage-0.1.20-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

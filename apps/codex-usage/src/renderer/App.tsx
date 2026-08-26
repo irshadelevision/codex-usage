@@ -14,10 +14,14 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { USAGE_CURRENCY_LABELS, usageCurrencyRateNote } from "../shared/currency.ts";
+import {
+  USAGE_CURRENCY_GROUPS,
+  USAGE_CURRENCY_LABELS,
+  usageCurrencyRateNote,
+} from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
-import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
+import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
   formatCurrency,
@@ -145,10 +149,14 @@ function SettingsPopover({
           value={preferences.currency}
           onChange={(event) => onUpdate({ currency: event.target.value as UsageCurrency })}
         >
-          {USAGE_CURRENCIES.map((currency) => (
-            <option key={currency} value={currency}>
-              {USAGE_CURRENCY_LABELS[currency]}
-            </option>
+          {USAGE_CURRENCY_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.currencies.map((currency) => (
+                <option key={currency} value={currency}>
+                  {USAGE_CURRENCY_LABELS[currency]}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>
