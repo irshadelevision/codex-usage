@@ -951,12 +951,7 @@ th.numeric {
   .titlebar-controls {
     width: 100%;
     gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .titlebar-controls::-webkit-scrollbar {
-    display: none;
+    overflow: visible;
   }
 
   .content {
