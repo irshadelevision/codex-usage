@@ -1,4 +1,4 @@
-import type { CodexWeeklyRateLimit } from "../shared/types.ts";
+import type { CodexWeeklyRateLimit, MenuBarDisplay } from "../shared/types.ts";
 import {
   formatMenuBarReset,
   formatResetDateCompact,
@@ -16,6 +16,10 @@ export function formatMenuBarUsd(value: number): string {
 }
 
 export type RateLimitStatusDisplay = "usage" | "usage-time" | "usage-date" | "time-date";
+
+export function shouldShowMenuBarIcon(showMenuBarIcon: boolean, display: MenuBarDisplay): boolean {
+  return showMenuBarIcon || display === "icon-only";
+}
 
 export function formatRateLimitStatus(
   limit: CodexWeeklyRateLimit | null,

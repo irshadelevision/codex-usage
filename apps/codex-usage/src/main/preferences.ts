@@ -11,6 +11,7 @@ import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
 
 const DEFAULT_PREFERENCES: UsagePreferences = {
   showInMenuBar: true,
+  showMenuBarIcon: true,
   launchAtLogin: false,
   menuBarRange: "7d",
   menuBarDisplay: "cost",
@@ -32,6 +33,10 @@ function decodePreferences(value: unknown): UsagePreferences {
       typeof input["showInMenuBar"] === "boolean"
         ? input["showInMenuBar"]
         : DEFAULT_PREFERENCES.showInMenuBar,
+    showMenuBarIcon:
+      typeof input["showMenuBarIcon"] === "boolean"
+        ? input["showMenuBarIcon"]
+        : DEFAULT_PREFERENCES.showMenuBarIcon,
     launchAtLogin:
       typeof input["launchAtLogin"] === "boolean"
         ? input["launchAtLogin"]

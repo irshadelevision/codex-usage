@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatMenuBarUsd, formatRateLimitStatus } from "./menuBarFormatting.ts";
+import {
+  formatMenuBarUsd,
+  formatRateLimitStatus,
+  shouldShowMenuBarIcon,
+} from "./menuBarFormatting.ts";
 
 describe("formatMenuBarUsd", () => {
   it("formats costs below 100 with cents", () => {
@@ -33,5 +37,16 @@ describe("formatRateLimitStatus", () => {
 
   it("uses a compact unavailable marker when the bucket is missing", () => {
     expect(formatRateLimitStatus(null, "usage-time", nowMs)).toBe("—");
+  });
+});
+
+describe("shouldShowMenuBarIcon", () => {
+  it("allows the icon to be hidden when a text value is displayed", () => {
+    expect(shouldShowMenuBarIcon(false, "codex-weekly-time")).toBe(false);
+    expect(shouldShowMenuBarIcon(true, "codex-weekly-time")).toBe(true);
+  });
+
+  it("keeps the status item reachable in icon-only mode", () => {
+    expect(shouldShowMenuBarIcon(false, "icon-only")).toBe(true);
   });
 });

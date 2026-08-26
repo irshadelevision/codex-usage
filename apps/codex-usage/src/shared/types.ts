@@ -98,6 +98,7 @@ export interface UsageSnapshot {
 
 export interface UsagePreferences {
   readonly showInMenuBar: boolean;
+  readonly showMenuBarIcon: boolean;
   readonly launchAtLogin: boolean;
   readonly menuBarRange: UsageRange;
   readonly menuBarDisplay: MenuBarDisplay;

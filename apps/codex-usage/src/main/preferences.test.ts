@@ -15,6 +15,7 @@ describe("PreferencesStore", () => {
       await store.load();
       await Promise.all([
         store.update({ showInMenuBar: false }),
+        store.update({ showMenuBarIcon: false }),
         store.update({ launchAtLogin: true }),
         store.update({ menuBarDisplay: "codex-reset" }),
       ]);
@@ -22,9 +23,22 @@ describe("PreferencesStore", () => {
       const reloaded = new PreferencesStore(path);
       expect(await reloaded.load()).toMatchObject({
         showInMenuBar: false,
+        showMenuBarIcon: false,
         launchAtLogin: true,
         menuBarDisplay: "codex-reset",
       });
+    } finally {
+      await NodeFSP.rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("shows the icon by default when loading older preferences", async () => {
+    const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "codex-usage-prefs-"));
+    const path = NodePath.join(directory, "preferences.json");
+    try {
+      await NodeFSP.writeFile(path, JSON.stringify({ showInMenuBar: true }), "utf8");
+      const store = new PreferencesStore(path);
+      expect(await store.load()).toMatchObject({ showMenuBarIcon: true });
     } finally {
       await NodeFSP.rm(directory, { recursive: true, force: true });
     }

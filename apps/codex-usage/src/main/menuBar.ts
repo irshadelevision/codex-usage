@@ -1,6 +1,13 @@
 import * as NodePath from "node:path";
 
-import { Menu, Tray, app, nativeImage, type MenuItemConstructorOptions } from "electron";
+import {
+  Menu,
+  Tray,
+  app,
+  nativeImage,
+  type MenuItemConstructorOptions,
+  type NativeImage,
+} from "electron";
 
 import type {
   CodexWeeklyRateLimit,
@@ -13,7 +20,11 @@ import type {
 } from "../shared/types.ts";
 import { formatMenuBarReset, formatResetDateTime } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS } from "../shared/types.ts";
-import { formatMenuBarUsd, formatRateLimitStatus } from "./menuBarFormatting.ts";
+import {
+  formatMenuBarUsd,
+  formatRateLimitStatus,
+  shouldShowMenuBarIcon,
+} from "./menuBarFormatting.ts";
 
 const RANGE_LABELS: Record<UsageRange, string> = {
   "24h": "Past 24 hours",
@@ -151,6 +162,9 @@ interface MenuBarControllerInput {
 export class MenuBarController {
   readonly #input: MenuBarControllerInput;
   #tray: Tray | null = null;
+  #menuBarIcon: NativeImage | null = null;
+  #hiddenMenuBarIcon: NativeImage | null = null;
+  #iconVisible: boolean | null = null;
   #snapshot: UsageSnapshot | null = null;
   #preferences: UsagePreferences | null = null;
   #countdownTimer: NodeJS.Timeout | null = null;
@@ -167,7 +181,14 @@ export class MenuBarController {
       return;
     }
     if (this.#tray === null) {
-      this.#tray = new Tray(createMenuBarIcon());
+      this.#menuBarIcon ??= createMenuBarIcon();
+      this.#hiddenMenuBarIcon ??= nativeImage.createEmpty();
+      const iconVisible = shouldShowMenuBarIcon(
+        preferences.showMenuBarIcon,
+        preferences.menuBarDisplay,
+      );
+      this.#tray = new Tray(iconVisible ? this.#menuBarIcon : this.#hiddenMenuBarIcon);
+      this.#iconVisible = iconVisible;
       this.#tray.setToolTip("Codex Usage");
       this.#tray.on("click", () => this.#tray?.popUpContextMenu());
     }
@@ -180,6 +201,7 @@ export class MenuBarController {
     this.#countdownTimer = null;
     this.#tray?.destroy();
     this.#tray = null;
+    this.#iconVisible = null;
   }
 
   #syncCountdownTimer() {
@@ -202,6 +224,16 @@ export class MenuBarController {
     const nowMs = Date.now();
     const selected = snapshot?.ranges[preferences.menuBarRange];
     const statusTitle = snapshot === null ? "—" : formatStatusTitle(snapshot, preferences, nowMs);
+    const iconVisible = shouldShowMenuBarIcon(
+      preferences.showMenuBarIcon,
+      preferences.menuBarDisplay,
+    );
+    if (iconVisible !== this.#iconVisible) {
+      this.#menuBarIcon ??= createMenuBarIcon();
+      this.#hiddenMenuBarIcon ??= nativeImage.createEmpty();
+      tray.setImage(iconVisible ? this.#menuBarIcon : this.#hiddenMenuBarIcon);
+      this.#iconVisible = iconVisible;
+    }
     tray.setTitle(statusTitle.length === 0 ? "" : ` ${statusTitle}`);
 
     const summaryDisplay = isRangeDisplay(preferences.menuBarDisplay)
@@ -284,6 +316,14 @@ export class MenuBarController {
         checked: preferences.launchAtLogin,
         click: (item) =>
           runMenuAction(this.#input.updatePreferences({ launchAtLogin: item.checked })),
+      },
+      {
+        label: "Show Menu Bar Icon",
+        type: "checkbox",
+        checked: shouldShowMenuBarIcon(preferences.showMenuBarIcon, preferences.menuBarDisplay),
+        enabled: preferences.menuBarDisplay !== "icon-only",
+        click: (item) =>
+          runMenuAction(this.#input.updatePreferences({ showMenuBarIcon: item.checked })),
       },
       {
         label: "Show in Menu Bar",

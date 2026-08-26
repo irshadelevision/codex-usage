@@ -151,6 +151,7 @@ export function createSampleApi(): CodexUsageApi {
   let snapshot = makeSnapshot();
   let preferences: UsagePreferences = {
     showInMenuBar: true,
+    showMenuBarIcon: true,
     launchAtLogin: false,
     menuBarRange: "7d",
     menuBarDisplay: "cost",

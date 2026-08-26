@@ -227,9 +227,14 @@ button:disabled {
 }
 
 .settings-select-row select:disabled,
-.disabled-label {
+.disabled-label,
+.settings-row.disabled-setting {
   color: var(--quiet);
   opacity: 0.52;
+}
+
+.switch:disabled {
+  cursor: default;
 }
 
 .settings-note {

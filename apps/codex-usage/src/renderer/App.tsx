@@ -89,20 +89,23 @@ function SegmentedControl<T extends string>({
 function ToggleRow({
   label,
   checked,
+  disabled = false,
   onChange,
 }: {
   readonly label: string;
   readonly checked: boolean;
+  readonly disabled?: boolean;
   readonly onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="settings-row">
+    <div className={`settings-row${disabled ? " disabled-setting" : ""}`}>
       <span>{label}</span>
       <button
         type="button"
         className="switch"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
       >
         <span />
@@ -140,6 +143,12 @@ function SettingsPopover({
         onChange={(showInMenuBar) => onUpdate({ showInMenuBar })}
       />
       <ToggleRow
+        label="Show Menu Bar Icon"
+        checked={preferences.showMenuBarIcon || preferences.menuBarDisplay === "icon-only"}
+        disabled={!preferences.showInMenuBar || preferences.menuBarDisplay === "icon-only"}
+        onChange={(showMenuBarIcon) => onUpdate({ showMenuBarIcon })}
+      />
+      <ToggleRow
         label="Launch at Login"
         checked={preferences.launchAtLogin}
         onChange={(launchAtLogin) => onUpdate({ launchAtLogin })}
@@ -171,7 +180,10 @@ function SettingsPopover({
           ))}
         </select>
       </label>
-      <p className="settings-note">Click the status item to open the native usage menu.</p>
+      <p className="settings-note">
+        Click the status item to open the native usage menu. Icon-only display always keeps the icon
+        visible.
+      </p>
     </div>
   );
 }
