@@ -72,7 +72,7 @@ button:disabled {
   align-items: center;
   gap: 24px;
   border-bottom: 1px solid var(--border);
-  padding: 0 18px 0 84px;
+  padding: 0 18px 0 96px;
   background: var(--background);
 }
 
