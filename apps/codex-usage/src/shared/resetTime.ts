@@ -37,9 +37,18 @@ function remainingParts(value: string | null, nowMs: number): string | null {
 }
 
 export function formatResetRemaining(value: string | null, nowMs: number): string {
-  const remaining = remainingParts(value, nowMs);
-  if (remaining === null) return "Time remaining unavailable";
+  const remaining = formatResetRemainingCompact(value, nowMs);
+  if (remaining === "—") return "Time remaining unavailable";
   return remaining === "Now" ? "Reset due now" : `${remaining} remaining`;
+}
+
+export function formatResetRemainingCompact(value: string | null, nowMs: number): string {
+  return remainingParts(value, nowMs) ?? "—";
+}
+
+export function formatResetDateCompact(value: string | null): string {
+  const resetAtMs = resetTimestamp(value);
+  return resetAtMs === null ? "—" : RESET_DATE_COMPACT.format(resetAtMs);
 }
 
 export function formatResetDateTime(value: string | null): string {
@@ -50,8 +59,8 @@ export function formatResetDateTime(value: string | null): string {
 }
 
 export function formatMenuBarReset(value: string | null, nowMs: number): string {
-  const resetAtMs = resetTimestamp(value);
-  const remaining = remainingParts(value, nowMs);
-  if (resetAtMs === null || remaining === null) return "—";
-  return `${remaining} · ${RESET_DATE_COMPACT.format(resetAtMs)}`;
+  const remaining = formatResetRemainingCompact(value, nowMs);
+  const date = formatResetDateCompact(value);
+  if (remaining === "—" || date === "—") return "—";
+  return `${remaining} · ${date}`;
 }

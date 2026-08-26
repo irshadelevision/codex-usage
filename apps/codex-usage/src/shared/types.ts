@@ -9,8 +9,12 @@ export const MENU_BAR_DISPLAYS = [
   "tokens",
   "sessions",
   "codex-weekly",
+  "codex-weekly-time",
+  "codex-weekly-date",
   "codex-reset",
   "spark-weekly",
+  "spark-weekly-time",
+  "spark-weekly-date",
   "spark-reset",
   "icon-only",
 ] as const;

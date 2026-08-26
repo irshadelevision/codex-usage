@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatMenuBarReset, formatResetDateTime, formatResetRemaining } from "./resetTime.ts";
+import {
+  formatMenuBarReset,
+  formatResetDateCompact,
+  formatResetDateTime,
+  formatResetRemaining,
+  formatResetRemainingCompact,
+} from "./resetTime.ts";
 
 const nowMs = Date.parse("2026-08-26T12:00:00.000Z");
 
 describe("reset time formatting", () => {
   it("formats a compact countdown and date for the menu bar", () => {
     expect(formatMenuBarReset("2026-08-28T16:30:00.000Z", nowMs)).toBe("2d 4h · Aug 28");
+    expect(formatResetRemainingCompact("2026-08-28T16:30:00.000Z", nowMs)).toBe("2d 4h");
+    expect(formatResetDateCompact("2026-08-28T16:30:00.000Z")).toBe("Aug 28");
   });
 
   it("formats a detailed countdown for weekly usage cards", () => {
@@ -18,5 +26,7 @@ describe("reset time formatting", () => {
     expect(formatResetRemaining(null, nowMs)).toBe("Time remaining unavailable");
     expect(formatResetDateTime("not-a-date")).toBe("Reset date unavailable");
     expect(formatMenuBarReset("not-a-date", nowMs)).toBe("—");
+    expect(formatResetRemainingCompact(null, nowMs)).toBe("—");
+    expect(formatResetDateCompact(null)).toBe("—");
   });
 });

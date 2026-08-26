@@ -13,7 +13,7 @@ import type {
 } from "../shared/types.ts";
 import { formatMenuBarReset, formatResetDateTime } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS } from "../shared/types.ts";
-import { formatMenuBarUsd } from "./menuBarFormatting.ts";
+import { formatMenuBarUsd, formatRateLimitStatus } from "./menuBarFormatting.ts";
 
 const RANGE_LABELS: Record<UsageRange, string> = {
   "24h": "Past 24 hours",
@@ -26,10 +26,14 @@ const DISPLAY_LABELS: Record<MenuBarDisplay, string> = {
   cost: "Estimated cost",
   tokens: "Processed tokens",
   sessions: "Sessions",
-  "codex-weekly": "Codex weekly remaining",
-  "codex-reset": "Codex reset time + date",
-  "spark-weekly": "Spark weekly remaining",
-  "spark-reset": "Spark reset time + date",
+  "codex-weekly": "Codex usage % only",
+  "codex-weekly-time": "Codex usage % + time left",
+  "codex-weekly-date": "Codex usage % + reset date",
+  "codex-reset": "Codex time left + reset date",
+  "spark-weekly": "Spark usage % only",
+  "spark-weekly-time": "Spark usage % + time left",
+  "spark-weekly-date": "Spark usage % + reset date",
+  "spark-reset": "Spark time left + reset date",
   "icon-only": "Icon only",
 };
 
@@ -85,8 +89,17 @@ function isRangeDisplay(display: MenuBarDisplay): boolean {
   return display === "cost" || display === "tokens" || display === "sessions";
 }
 
-function isResetDisplay(display: MenuBarDisplay): boolean {
-  return display === "codex-reset" || display === "spark-reset";
+function usesCountdown(display: MenuBarDisplay): boolean {
+  return (
+    display === "codex-weekly-time" ||
+    display === "codex-reset" ||
+    display === "spark-weekly-time" ||
+    display === "spark-reset"
+  );
+}
+
+function formatSparkStatus(value: string): string {
+  return value === "—" ? value : `S ${value}`;
 }
 
 function formatStatusTitle(
@@ -96,19 +109,28 @@ function formatStatusTitle(
 ): string {
   if (preferences.menuBarDisplay === "icon-only") return "";
   if (preferences.menuBarDisplay === "codex-weekly") {
-    const limit = snapshot.rateLimits.codex;
-    return limit === null ? "—" : `${limit.remainingPercent}%`;
+    return formatRateLimitStatus(snapshot.rateLimits.codex, "usage", nowMs);
+  }
+  if (preferences.menuBarDisplay === "codex-weekly-time") {
+    return formatRateLimitStatus(snapshot.rateLimits.codex, "usage-time", nowMs);
+  }
+  if (preferences.menuBarDisplay === "codex-weekly-date") {
+    return formatRateLimitStatus(snapshot.rateLimits.codex, "usage-date", nowMs);
   }
   if (preferences.menuBarDisplay === "spark-weekly") {
-    const limit = snapshot.rateLimits.spark;
-    return limit === null ? "—" : `S ${limit.remainingPercent}%`;
+    return formatSparkStatus(formatRateLimitStatus(snapshot.rateLimits.spark, "usage", nowMs));
+  }
+  if (preferences.menuBarDisplay === "spark-weekly-time") {
+    return formatSparkStatus(formatRateLimitStatus(snapshot.rateLimits.spark, "usage-time", nowMs));
+  }
+  if (preferences.menuBarDisplay === "spark-weekly-date") {
+    return formatSparkStatus(formatRateLimitStatus(snapshot.rateLimits.spark, "usage-date", nowMs));
   }
   if (preferences.menuBarDisplay === "codex-reset") {
-    return formatMenuBarReset(snapshot.rateLimits.codex?.resetsAt ?? null, nowMs);
+    return formatRateLimitStatus(snapshot.rateLimits.codex, "time-date", nowMs);
   }
   if (preferences.menuBarDisplay === "spark-reset") {
-    const value = formatMenuBarReset(snapshot.rateLimits.spark?.resetsAt ?? null, nowMs);
-    return value === "—" ? value : `S ${value}`;
+    return formatSparkStatus(formatRateLimitStatus(snapshot.rateLimits.spark, "time-date", nowMs));
   }
   return formatRangeDisplay(snapshot.ranges[preferences.menuBarRange], preferences.menuBarDisplay);
 }
@@ -161,8 +183,7 @@ export class MenuBarController {
   }
 
   #syncCountdownTimer() {
-    const shouldRun =
-      this.#preferences !== null && isResetDisplay(this.#preferences.menuBarDisplay);
+    const shouldRun = this.#preferences !== null && usesCountdown(this.#preferences.menuBarDisplay);
     if (shouldRun && this.#countdownTimer === null) {
       this.#countdownTimer = setInterval(() => this.#render(), 60_000);
       this.#countdownTimer.unref();
