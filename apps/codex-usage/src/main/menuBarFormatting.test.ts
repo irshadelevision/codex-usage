@@ -4,6 +4,7 @@ import type { ExchangeRateSnapshot } from "../shared/types.ts";
 import {
   formatMenuBarCurrency,
   formatRateLimitStatus,
+  getMenuBarPopoverHeight,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
@@ -73,12 +74,12 @@ describe("shouldShowMenuBarIcon", () => {
 
 describe("getMenuBarPopoverPosition", () => {
   const workArea = { x: 0, y: 24, width: 1_440, height: 876 };
-  const popover = { width: 380, height: 640 };
+  const popover = { width: 390, height: 724 };
 
   it("centers the popover beneath the status item", () => {
     expect(
       getMenuBarPopoverPosition({ x: 700, y: 0, width: 24, height: 24 }, workArea, popover),
-    ).toEqual({ x: 522, y: 30 });
+    ).toEqual({ x: 517, y: 30 });
   });
 
   it("keeps the popover inside the display at either horizontal edge", () => {
@@ -87,12 +88,22 @@ describe("getMenuBarPopoverPosition", () => {
     ).toBe(0);
     expect(
       getMenuBarPopoverPosition({ x: 1_420, y: 0, width: 20, height: 24 }, workArea, popover).x,
-    ).toBe(1_060);
+    ).toBe(1_050);
   });
 
   it("opens above a bottom-positioned status item", () => {
     expect(
       getMenuBarPopoverPosition({ x: 700, y: 876, width: 24, height: 24 }, workArea, popover).y,
-    ).toBe(230);
+    ).toBe(146);
+  });
+});
+
+describe("getMenuBarPopoverHeight", () => {
+  it("uses the full preferred height when it fits", () => {
+    expect(getMenuBarPopoverHeight(876, 724)).toBe(724);
+  });
+
+  it("clamps the popover to a shorter display work area", () => {
+    expect(getMenuBarPopoverHeight(640, 724)).toBe(640);
   });
 });

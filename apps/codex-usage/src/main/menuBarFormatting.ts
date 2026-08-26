@@ -63,6 +63,10 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
+export function getMenuBarPopoverHeight(workAreaHeight: number, preferredHeight: number): number {
+  return Math.max(1, Math.min(Math.floor(workAreaHeight), preferredHeight));
+}
+
 export function getMenuBarPopoverPosition(
   anchor: RectangleLike,
   workArea: RectangleLike,

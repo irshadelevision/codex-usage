@@ -11,9 +11,12 @@ import type {
 import {
   formatMenuBarCurrency,
   formatRateLimitStatus,
+  getMenuBarPopoverHeight,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
+
+export const MENU_BAR_POPOVER_HEIGHT = 724;
 
 const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -198,6 +201,11 @@ export class MenuBarController {
       y: Math.round(anchor.y + anchor.height / 2),
     };
     const workArea = screen.getDisplayNearestPoint(anchorCenter).workArea;
+    const height = getMenuBarPopoverHeight(workArea.height, MENU_BAR_POPOVER_HEIGHT);
+    const contentBounds = popover.getContentBounds();
+    if (contentBounds.height !== height) {
+      popover.setContentSize(contentBounds.width, height, false);
+    }
     const position = getMenuBarPopoverPosition(anchor, workArea, popover.getBounds());
     popover.setPosition(position.x, position.y, false);
     popover.show();

@@ -13,7 +13,7 @@ import {
 
 import type { AppInfo, UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
 import { ExchangeRateReader } from "./main/exchangeRates.ts";
-import { MenuBarController } from "./main/menuBar.ts";
+import { MENU_BAR_POPOVER_HEIGHT, MenuBarController } from "./main/menuBar.ts";
 import { PreferencesStore } from "./main/preferences.ts";
 import { CodexRateLimitReader } from "./main/rateLimits.ts";
 import { CodexUsageScanner } from "./main/scanner.ts";
@@ -144,7 +144,7 @@ function createMenuBarPopoverWindow() {
   const window = new BrowserWindow({
     title: "Codex Usage",
     width: 390,
-    height: 684,
+    height: MENU_BAR_POPOVER_HEIGHT,
     useContentSize: true,
     frame: false,
     transparent: true,
