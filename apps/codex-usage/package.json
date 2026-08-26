@@ -1,6 +1,6 @@
 {
   "name": "@codex-usage/app",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "private": true,
   "description": "A private, local-first macOS dashboard for Codex usage.",
   "author": "Irshad Ibrahim",
@@ -10,7 +10,7 @@
     "build": "vp build && vp pack",
     "dev": "node scripts/dev.mjs",
     "dev:web": "vp dev --host 127.0.0.1 --port 4178",
-    "dist:mac": "pnpm run build && electron-builder --mac dmg",
+    "dist:mac": "node scripts/clean-release.mjs && pnpm run build && electron-builder --mac dmg",
     "start": "electron dist-electron/main.cjs",
     "test": "vp test run --passWithNoTests",
     "lint": "vp lint --report-unused-disable-directives",
