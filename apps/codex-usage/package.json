@@ -1,6 +1,6 @@
 {
   "name": "@codex-usage/app",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "description": "A private, local-first macOS dashboard for Codex usage.",
   "author": "Irshad Ibrahim",

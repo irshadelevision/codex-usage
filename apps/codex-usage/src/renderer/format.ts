@@ -1,4 +1,4 @@
-import { convertUsd } from "../shared/currency.ts";
+import { CURRENCY_FRACTION_DIGITS, convertUsd } from "../shared/currency.ts";
 import type { RangeSummary, UsageCurrency, UsageRange } from "../shared/types.ts";
 
 const USD = new Intl.NumberFormat("en-US", {
@@ -7,11 +7,14 @@ const USD = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-const AED = new Intl.NumberFormat("en-US", {
+const TWO_DECIMAL_CURRENCY = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
+const THREE_DECIMAL_CURRENCY = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 3,
+});
 const INTEGER = new Intl.NumberFormat("en-US");
 const COMPACT = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -32,7 +35,11 @@ function finiteOrZero(value: number): number {
 
 export function formatCurrency(valueUsd: number, currency: UsageCurrency): string {
   const value = convertUsd(finiteOrZero(valueUsd), currency);
-  return currency === "AED" ? `AED ${AED.format(value)}` : USD.format(value);
+  if (currency === "USD") return USD.format(value);
+  const formatter =
+    CURRENCY_FRACTION_DIGITS[currency] === 3 ? THREE_DECIMAL_CURRENCY : TWO_DECIMAL_CURRENCY;
+  const formatted = formatter.format(value);
+  return `${currency} ${formatted}`;
 }
 
 export function formatTokens(value: number): string {

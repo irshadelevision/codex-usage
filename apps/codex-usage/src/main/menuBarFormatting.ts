@@ -1,4 +1,4 @@
-import { convertUsd } from "../shared/currency.ts";
+import { CURRENCY_FRACTION_DIGITS, convertUsd } from "../shared/currency.ts";
 import type { CodexWeeklyRateLimit, MenuBarDisplay, UsageCurrency } from "../shared/types.ts";
 import {
   formatMenuBarReset,
@@ -6,14 +6,29 @@ import {
   formatResetRemainingCompact,
 } from "../shared/resetTime.ts";
 
+const MENU_BAR_INTEGER = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+const MENU_BAR_TWO_DECIMAL = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const MENU_BAR_THREE_DECIMAL = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 3,
+});
+
+function formatMenuBarNumber(value: number, fractionDigits: number): string {
+  if (fractionDigits === 0) return MENU_BAR_INTEGER.format(value);
+  return (fractionDigits === 3 ? MENU_BAR_THREE_DECIMAL : MENU_BAR_TWO_DECIMAL).format(value);
+}
+
 export function formatMenuBarCurrency(valueUsd: number, currency: UsageCurrency): string {
   const value = convertUsd(Number.isFinite(valueUsd) ? valueUsd : 0, currency);
-  const fractionDigits = value >= 100 ? 0 : 2;
-  const formatted = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(value);
-  return currency === "AED" ? `AED ${formatted}` : `$${formatted}`;
+  const fractionDigits = value >= 100 ? 0 : CURRENCY_FRACTION_DIGITS[currency];
+  const formatted = formatMenuBarNumber(value, fractionDigits);
+  return currency === "USD" ? `$${formatted}` : `${currency} ${formatted}`;
 }
 
 export type RateLimitStatusDisplay = "usage" | "usage-time" | "usage-date" | "time-date";

@@ -19,9 +19,13 @@ function breakdownRow(
   tokens: number,
   tokenTotal: number,
   sessions: number,
+  model: string,
+  mode: string | null,
 ): UsageBreakdownRow {
   return {
     key,
+    model,
+    mode,
     costUsd,
     costShare: costUsd / costTotal,
     totalTokens: tokens,
@@ -62,6 +66,7 @@ function sampleSummary(range: UsageRange, nowMs: number): RangeSummary {
   const modelNames = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5.4", "codex-auto-review"];
   const modeCosts = [0.099, 0.335, 0.398, 0.168];
   const modeNames = ["low", "medium", "high", "xhigh"];
+  const modeModels = ["gpt-5.5", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-sol"];
   const sessions = Math.max(4, Math.round(32 * scale));
 
   return {
@@ -88,16 +93,20 @@ function sampleSummary(range: UsageRange, nowMs: number): RangeSummary {
         totalTokens * (modelTokens[index] ?? 0),
         totalTokens,
         Math.max(1, sessions - index * 4),
+        name,
+        null,
       ),
     ),
     modes: modeNames.map((name, index) =>
       breakdownRow(
-        name,
+        JSON.stringify([modeModels[index] ?? "unknown", name]),
         costUsd * (modeCosts[index] ?? 0),
         costUsd,
         totalTokens * (modeCosts[index] ?? 0),
         totalTokens,
         Math.max(1, Math.round(sessions * (modeCosts[index] ?? 0))),
+        modeModels[index] ?? "unknown",
+        name,
       ),
     ),
   };
@@ -173,15 +182,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.16", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.17", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.16",
-        latestVersion: "0.1.16",
+        currentVersion: "0.1.17",
+        latestVersion: "0.1.17",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.16",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.17",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.16/Codex.Usage-0.1.16-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.17/Codex.Usage-0.1.17-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

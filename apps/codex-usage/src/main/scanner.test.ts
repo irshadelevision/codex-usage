@@ -9,16 +9,15 @@ import {
 } from "./scanner.ts";
 import type { RateTable } from "./pricing.ts";
 
+const modelRate = {
+  inputCostPerToken: 1e-6,
+  outputCostPerToken: 8e-6,
+  cacheReadCostPerToken: 1e-7,
+  cacheCreationCostPerToken: 1e-6,
+};
 const rates: RateTable = new Map([
-  [
-    "gpt-5.6-sol",
-    {
-      inputCostPerToken: 1e-6,
-      outputCostPerToken: 8e-6,
-      cacheReadCostPerToken: 1e-7,
-      cacheCreationCostPerToken: 1e-6,
-    },
-  ],
+  ["gpt-5.6-sol", modelRate],
+  ["gpt-5.6-terra", modelRate],
 ]);
 
 function line(type: string, timestamp: string, payload: Record<string, unknown>) {
@@ -138,19 +137,31 @@ function record(overrides: Partial<UsageRecord> = {}): UsageRecord {
 describe("aggregateRange", () => {
   it("builds model and mode breakdowns without adding reasoning twice", () => {
     const summary = aggregateRange(
-      [record(), record({ mode: "low", sessionId: "session-b" })],
+      [
+        record(),
+        record({ timestampMs: Date.parse("2026-08-26T10:11:00.000Z") }),
+        record({ mode: "low", sessionId: "session-b" }),
+        record({ model: "gpt-5.6-terra", mode: "high", sessionId: "session-c" }),
+      ],
       "7d",
       Date.parse("2026-08-26T12:00:00.000Z"),
       "UTC",
       rates,
     );
 
-    expect(summary.totalTokens).toBe(1_300);
-    expect(summary.totals.reasoningTokens).toBe(40);
-    expect(summary.sessions).toBe(2);
-    expect(summary.models).toHaveLength(1);
-    expect(summary.models[0]?.sessions).toBe(2);
-    expect(summary.modes.map((mode) => mode.key).toSorted()).toEqual(["high", "low"]);
+    expect(summary.totalTokens).toBe(2_600);
+    expect(summary.totals.reasoningTokens).toBe(80);
+    expect(summary.sessions).toBe(3);
+    expect(summary.models).toHaveLength(2);
+    expect(summary.models.find(({ model }) => model === "gpt-5.6-sol")?.sessions).toBe(2);
+    expect(summary.modes.map(({ model, mode }) => `${model}:${mode}`).toSorted()).toEqual([
+      "gpt-5.6-sol:high",
+      "gpt-5.6-sol:low",
+      "gpt-5.6-terra:high",
+    ]);
+    expect(
+      summary.modes.find(({ model, mode }) => model === "gpt-5.6-sol" && mode === "high")?.sessions,
+    ).toBe(1);
     expect(summary.series).toHaveLength(7);
     expect(summary.costUsd).toBeGreaterThan(0);
   });

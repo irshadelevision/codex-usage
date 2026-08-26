@@ -8,11 +8,12 @@ The app includes:
 
 - hourly and daily cost/token graphs;
 - processed, cached, uncached, output, and reasoning token totals;
-- model and reasoning-mode breakdowns;
+- model breakdowns and model-by-reasoning-mode breakdowns;
 - live Codex and Spark weekly usage, reset countdowns, and reset dates from the signed-in Codex CLI session;
 - de-duplication for repeated token events and copied fork/subagent history;
 - LiteLLM pricing with a 24-hour offline cache;
-- USD and AED display currencies, with AED converted at the fixed rate `1 USD = 3.6725 AED`;
+- USD, AED, SAR, BHD, QAR, OMR, JOD, and HKD display currencies using configured peg rates
+  (HKD uses the `7.80` midpoint of its supplied band);
 - a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
 - a configurable menu-bar value: cost, tokens, sessions, Codex/Spark usage percentage only,
   percentage plus time left, percentage plus reset date, time left plus reset date, or icon only;

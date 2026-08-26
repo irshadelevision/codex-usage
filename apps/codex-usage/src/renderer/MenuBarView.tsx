@@ -2,7 +2,7 @@ import { ArrowUpRightIcon, InfoIcon, PowerIcon, RefreshCwIcon, Settings2Icon } f
 import { useEffect, useState } from "react";
 
 import appIconUrl from "../../build/icon.png";
-import { USAGE_CURRENCY_LABELS } from "../shared/currency.ts";
+import { USAGE_CURRENCY_LABELS, USAGE_CURRENCY_RATE_NOTES } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import type {
@@ -252,7 +252,7 @@ export function MenuBarView() {
   const summary = snapshot.ranges[preferences.menuBarRange];
   const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
   const topModel = summary.models[0]?.key ?? "No activity";
-  const topMode = summary.modes[0]?.key;
+  const topMode = summary.modes[0]?.mode ?? undefined;
 
   return (
     <main className="menu-bar-shell">
@@ -330,6 +330,7 @@ export function MenuBarView() {
               ))}
             </select>
           </label>
+          <p className="menu-currency-note">{USAGE_CURRENCY_RATE_NOTES[preferences.currency]}</p>
           <label className="menu-display-field">
             <span>Displayed value</span>
             <select

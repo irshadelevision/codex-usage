@@ -1,7 +1,7 @@
 export const USAGE_RANGES = ["24h", "7d", "30d", "90d"] as const;
 export type UsageRange = (typeof USAGE_RANGES)[number];
 
-export const USAGE_CURRENCIES = ["USD", "AED"] as const;
+export const USAGE_CURRENCIES = ["USD", "AED", "SAR", "BHD", "QAR", "OMR", "JOD", "HKD"] as const;
 export type UsageCurrency = (typeof USAGE_CURRENCIES)[number];
 
 export type UsageMetric = "cost" | "tokens";
@@ -39,6 +39,8 @@ export interface UsagePoint {
 
 export interface UsageBreakdownRow {
   readonly key: string;
+  readonly model: string;
+  readonly mode: string | null;
   readonly costUsd: number;
   readonly costShare: number;
   readonly totalTokens: number;

@@ -59,6 +59,8 @@ interface ScanCacheEntry {
 }
 
 interface MutableBreakdown {
+  readonly model: string;
+  readonly mode: string | null;
   costUsd: number;
   totalTokens: number;
   sessions: Set<string>;
@@ -383,6 +385,8 @@ function buildBreakdownRows(
   return [...source.entries()]
     .map(([key, value]) => ({
       key,
+      model: value.model,
+      mode: value.mode,
       costUsd: value.costUsd,
       costShare: costUsd === 0 ? 0 : value.costUsd / costUsd,
       totalTokens: value.totalTokens,
@@ -395,11 +399,19 @@ function buildBreakdownRows(
 function addBreakdown(
   target: Map<string, MutableBreakdown>,
   key: string,
+  model: string,
+  mode: string | null,
   costUsd: number,
   tokens: number,
   sessionId: string,
 ) {
-  const value = target.get(key) ?? { costUsd: 0, totalTokens: 0, sessions: new Set<string>() };
+  const value = target.get(key) ?? {
+    model,
+    mode,
+    costUsd: 0,
+    totalTokens: 0,
+    sessions: new Set<string>(),
+  };
   value.costUsd += costUsd;
   value.totalTokens += tokens;
   if (sessionId.length > 0) value.sessions.add(sessionId);
@@ -466,8 +478,24 @@ export function aggregateRange(
       point.costUsd += priced.costUsd;
       point.totalTokens += tokens;
     }
-    addBreakdown(models, record.model, priced.costUsd, tokens, record.sessionId);
-    addBreakdown(modes, record.mode, priced.costUsd, tokens, record.sessionId);
+    addBreakdown(
+      models,
+      record.model,
+      record.model,
+      null,
+      priced.costUsd,
+      tokens,
+      record.sessionId,
+    );
+    addBreakdown(
+      modes,
+      JSON.stringify([record.model, record.mode]),
+      record.model,
+      record.mode,
+      priced.costUsd,
+      tokens,
+      record.sessionId,
+    );
   }
 
   const allTokens = totalTokens(totals);

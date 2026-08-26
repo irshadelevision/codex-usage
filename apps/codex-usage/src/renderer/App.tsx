@@ -13,7 +13,7 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { USAGE_CURRENCY_LABELS } from "../shared/currency.ts";
+import { USAGE_CURRENCY_LABELS, USAGE_CURRENCY_RATE_NOTES } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
@@ -136,7 +136,7 @@ function SettingsPopover({
         checked={preferences.launchAtLogin}
         onChange={(launchAtLogin) => onUpdate({ launchAtLogin })}
       />
-      <label className="settings-select-row">
+      <label className="settings-select-row settings-currency-row">
         <span>Currency</span>
         <select
           value={preferences.currency}
@@ -181,8 +181,8 @@ function SettingsPopover({
         <InfoIcon size={14} />
       </button>
       <p className="settings-note">
-        AED uses the fixed rate 1 USD = 3.6725 AED. Icon-only display always keeps the menu bar icon
-        visible.
+        {USAGE_CURRENCY_RATE_NOTES[preferences.currency]} Icon-only display always keeps the menu
+        bar icon visible.
       </p>
     </div>
   );
@@ -350,9 +350,10 @@ function BreakdownTable({
 
   return (
     <div className="table-wrap">
-      <table>
+      <table className={kind === "modes" ? "mode-breakdown-table" : "model-breakdown-table"}>
         <colgroup>
-          <col className="name-column" />
+          <col className="model-column" />
+          {kind === "modes" ? <col className="reasoning-column" /> : null}
           <col />
           <col />
           <col />
@@ -360,7 +361,8 @@ function BreakdownTable({
         </colgroup>
         <thead>
           <tr>
-            <th>{kind === "models" ? "Model" : "Mode"}</th>
+            <th>Model</th>
+            {kind === "modes" ? <th>Reasoning</th> : null}
             <th className="numeric">Cost</th>
             <th>Share</th>
             <th className="numeric">Tokens</th>
@@ -370,7 +372,7 @@ function BreakdownTable({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={5} className="empty-row">
+              <td colSpan={kind === "modes" ? 6 : 5} className="empty-row">
                 No Codex activity in this range.
               </td>
             </tr>
@@ -379,7 +381,10 @@ function BreakdownTable({
               const share = metric === "cost" ? row.costShare : row.tokenShare;
               return (
                 <tr key={row.key}>
-                  <td className="row-name">{kind === "modes" ? formatMode(row.key) : row.key}</td>
+                  <td className="row-name">{row.model}</td>
+                  {kind === "modes" ? (
+                    <td className="mode-cell">{formatMode(row.mode ?? "unknown")}</td>
+                  ) : null}
                   <td className="numeric strong-cell">{formatCurrency(row.costUsd, currency)}</td>
                   <td>
                     <div className="share-cell">

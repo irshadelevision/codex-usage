@@ -11,6 +11,8 @@ describe("formatMenuBarCurrency", () => {
   it("formats costs below 100 with cents", () => {
     expect(formatMenuBarCurrency(42.5, "USD")).toBe("$42.50");
     expect(formatMenuBarCurrency(10, "AED")).toBe("AED 36.73");
+    expect(formatMenuBarCurrency(10, "BHD")).toBe("BHD 3.760");
+    expect(formatMenuBarCurrency(10, "HKD")).toBe("HKD 78.00");
   });
 
   it("formats costs at or above 100 without an invalid fraction range", () => {

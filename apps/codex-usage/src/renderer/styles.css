@@ -226,6 +226,10 @@ button:disabled {
   font-size: 11px;
 }
 
+.settings-currency-row select {
+  width: 200px;
+}
+
 .settings-select-row select:disabled,
 .disabled-label,
 .settings-row.disabled-setting {
@@ -729,8 +733,16 @@ table {
   font-size: 11px;
 }
 
-col.name-column {
+col.model-column {
   width: 31%;
+}
+
+.mode-breakdown-table col.model-column {
+  width: 24%;
+}
+
+col.reasoning-column {
+  width: 14%;
 }
 
 th,
@@ -769,6 +781,11 @@ th.numeric {
   font-weight: 510;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mode-cell {
+  color: #bdbdbd;
+  font-weight: 500;
 }
 
 .strong-cell {
@@ -1338,6 +1355,13 @@ html.menu-bar-document #root {
   white-space: nowrap;
 }
 
+.menu-currency-note {
+  margin: -1px 0 7px;
+  color: var(--quiet);
+  font-size: 8px;
+  line-height: 1.35;
+}
+
 .menu-display-field select {
   width: 208px;
   height: 27px;
@@ -1628,6 +1652,10 @@ html.menu-bar-document #root {
 
   table {
     min-width: 620px;
+  }
+
+  .mode-breakdown-table {
+    min-width: 720px;
   }
 
   .status-footer {
