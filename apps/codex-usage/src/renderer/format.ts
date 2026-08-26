@@ -1,5 +1,10 @@
 import { CURRENCY_FRACTION_DIGITS, convertUsd } from "../shared/currency.ts";
-import type { RangeSummary, UsageCurrency, UsageRange } from "../shared/types.ts";
+import type {
+  ExchangeRateSnapshot,
+  RangeSummary,
+  UsageCurrency,
+  UsageRange,
+} from "../shared/types.ts";
 
 const USD = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -14,6 +19,10 @@ const TWO_DECIMAL_CURRENCY = new Intl.NumberFormat("en-US", {
 const THREE_DECIMAL_CURRENCY = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 3,
   maximumFractionDigits: 3,
+});
+const ZERO_DECIMAL_CURRENCY = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
 });
 const INTEGER = new Intl.NumberFormat("en-US");
 const COMPACT = new Intl.NumberFormat("en-US", {
@@ -33,11 +42,21 @@ function finiteOrZero(value: number): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-export function formatCurrency(valueUsd: number, currency: UsageCurrency): string {
-  const value = convertUsd(finiteOrZero(valueUsd), currency);
+export function formatCurrency(
+  valueUsd: number,
+  currency: UsageCurrency,
+  exchangeRates?: ExchangeRateSnapshot,
+): string {
+  const value = convertUsd(finiteOrZero(valueUsd), currency, exchangeRates);
+  if (value === null) return `${currency} —`;
   if (currency === "USD") return USD.format(value);
+  const fractionDigits = CURRENCY_FRACTION_DIGITS[currency];
   const formatter =
-    CURRENCY_FRACTION_DIGITS[currency] === 3 ? THREE_DECIMAL_CURRENCY : TWO_DECIMAL_CURRENCY;
+    fractionDigits === 0
+      ? ZERO_DECIMAL_CURRENCY
+      : fractionDigits === 3
+        ? THREE_DECIMAL_CURRENCY
+        : TWO_DECIMAL_CURRENCY;
   const formatted = formatter.format(value);
   return `${currency} ${formatted}`;
 }

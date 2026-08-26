@@ -1,5 +1,10 @@
 import { CURRENCY_FRACTION_DIGITS, convertUsd } from "../shared/currency.ts";
-import type { CodexWeeklyRateLimit, MenuBarDisplay, UsageCurrency } from "../shared/types.ts";
+import type {
+  CodexWeeklyRateLimit,
+  ExchangeRateSnapshot,
+  MenuBarDisplay,
+  UsageCurrency,
+} from "../shared/types.ts";
 import {
   formatMenuBarReset,
   formatResetDateCompact,
@@ -24,8 +29,13 @@ function formatMenuBarNumber(value: number, fractionDigits: number): string {
   return (fractionDigits === 3 ? MENU_BAR_THREE_DECIMAL : MENU_BAR_TWO_DECIMAL).format(value);
 }
 
-export function formatMenuBarCurrency(valueUsd: number, currency: UsageCurrency): string {
-  const value = convertUsd(Number.isFinite(valueUsd) ? valueUsd : 0, currency);
+export function formatMenuBarCurrency(
+  valueUsd: number,
+  currency: UsageCurrency,
+  exchangeRates?: ExchangeRateSnapshot,
+): string {
+  const value = convertUsd(Number.isFinite(valueUsd) ? valueUsd : 0, currency, exchangeRates);
+  if (value === null) return `${currency} —`;
   const fractionDigits = value >= 100 ? 0 : CURRENCY_FRACTION_DIGITS[currency];
   const formatted = formatMenuBarNumber(value, fractionDigits);
   return currency === "USD" ? `$${formatted}` : `${currency} ${formatted}`;

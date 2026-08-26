@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import type { ExchangeRateSnapshot } from "../shared/types.ts";
 import {
   formatCount,
   formatCurrency,
@@ -7,6 +8,15 @@ import {
   formatTokens,
   formatUpdatedAt,
 } from "./format.ts";
+
+const exchangeRates: ExchangeRateSnapshot = {
+  status: "fresh",
+  source: "Frankfurter",
+  fetchedAt: "2026-08-27T00:00:00.000Z",
+  rates: { EUR: 0.85656, KRW: 1_383.61 },
+  rateDates: { EUR: "2026-08-26", KRW: "2026-08-26" },
+  message: null,
+};
 
 describe("usage formatting", () => {
   it("keeps invalid numeric data from breaking the dashboard", () => {
@@ -29,6 +39,12 @@ describe("usage formatting", () => {
     expect(formatCurrency(10, "BHD")).toBe("BHD 3.760");
     expect(formatCurrency(10, "OMR")).toBe("OMR 3.850");
     expect(formatCurrency(10, "JOD")).toBe("JOD 7.100");
+  });
+
+  it("formats live currencies and clearly marks unavailable rates", () => {
+    expect(formatCurrency(10, "EUR", exchangeRates)).toBe("EUR 8.57");
+    expect(formatCurrency(10, "KRW", exchangeRates)).toBe("KRW 13,836");
+    expect(formatCurrency(10, "RUB", exchangeRates)).toBe("RUB —");
   });
 
   it("falls back for invalid timestamps", () => {

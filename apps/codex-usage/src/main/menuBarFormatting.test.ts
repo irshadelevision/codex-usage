@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import type { ExchangeRateSnapshot } from "../shared/types.ts";
 import {
   formatMenuBarCurrency,
   formatRateLimitStatus,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
+
+const exchangeRates: ExchangeRateSnapshot = {
+  status: "fresh",
+  source: "Frankfurter",
+  fetchedAt: "2026-08-27T00:00:00.000Z",
+  rates: { GBP: 0.73383, INR: 95.48 },
+  rateDates: { GBP: "2026-08-26", INR: "2026-08-26" },
+  message: null,
+};
 
 describe("formatMenuBarCurrency", () => {
   it("formats costs below 100 with cents", () => {
@@ -18,6 +28,12 @@ describe("formatMenuBarCurrency", () => {
   it("formats costs at or above 100 without an invalid fraction range", () => {
     expect(formatMenuBarCurrency(100, "USD")).toBe("$100");
     expect(formatMenuBarCurrency(1_234.56, "USD")).toBe("$1,235");
+  });
+
+  it("uses live rates and remains compact when a rate is unavailable", () => {
+    expect(formatMenuBarCurrency(10, "GBP", exchangeRates)).toBe("GBP 7.34");
+    expect(formatMenuBarCurrency(10, "INR", exchangeRates)).toBe("INR 955");
+    expect(formatMenuBarCurrency(10, "RUB", exchangeRates)).toBe("RUB —");
   });
 });
 

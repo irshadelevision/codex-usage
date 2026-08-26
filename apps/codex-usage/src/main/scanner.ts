@@ -538,7 +538,7 @@ export class CodexUsageScanner {
     this.#ratesCachePath = input.ratesCachePath;
   }
 
-  async scan(nowMs = Date.now()): Promise<Omit<UsageSnapshot, "rateLimits">> {
+  async scan(nowMs = Date.now()): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
     const startedAt = Date.now();
     if (this.#cache === null) this.#cache = await readScanCache(this.#scanCachePath);
 

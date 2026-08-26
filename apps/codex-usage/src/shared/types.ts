@@ -1,7 +1,18 @@
 export const USAGE_RANGES = ["24h", "7d", "30d", "90d"] as const;
 export type UsageRange = (typeof USAGE_RANGES)[number];
 
-export const USAGE_CURRENCIES = ["USD", "AED", "SAR", "BHD", "QAR", "OMR", "JOD", "HKD"] as const;
+export const LIVE_USAGE_CURRENCIES = ["AUD", "CNY", "EUR", "GBP", "INR", "KRW", "RUB"] as const;
+export const USAGE_CURRENCIES = [
+  "USD",
+  "AED",
+  "SAR",
+  "BHD",
+  "QAR",
+  "OMR",
+  "JOD",
+  "HKD",
+  ...LIVE_USAGE_CURRENCIES,
+] as const;
 export type UsageCurrency = (typeof USAGE_CURRENCIES)[number];
 
 export type UsageMetric = "cost" | "tokens";
@@ -86,6 +97,17 @@ export interface CodexRateLimits {
   readonly message: string | null;
 }
 
+export type ExchangeRateStatus = "fresh" | "cached" | "unavailable";
+
+export interface ExchangeRateSnapshot {
+  readonly status: ExchangeRateStatus;
+  readonly source: "Frankfurter";
+  readonly fetchedAt: string | null;
+  readonly rates: Readonly<Partial<Record<UsageCurrency, number>>>;
+  readonly rateDates: Readonly<Partial<Record<UsageCurrency, string>>>;
+  readonly message: string | null;
+}
+
 export interface UsageSnapshot {
   readonly readAt: string;
   readonly sourcePath: string;
@@ -97,6 +119,7 @@ export interface UsageSnapshot {
     readonly knownModels: number;
     readonly fetchedAt: string | null;
   };
+  readonly exchangeRates: ExchangeRateSnapshot;
   readonly rateLimits: CodexRateLimits;
   readonly ranges: Readonly<Record<UsageRange, RangeSummary>>;
 }

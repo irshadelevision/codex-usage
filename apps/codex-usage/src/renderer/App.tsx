@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   BreakdownKind,
   CodexWeeklyRateLimit,
+  ExchangeRateSnapshot,
   MenuBarDisplay,
   RangeSummary,
   UsageMetric,
@@ -13,7 +14,7 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { USAGE_CURRENCY_LABELS, USAGE_CURRENCY_RATE_NOTES } from "../shared/currency.ts";
+import { USAGE_CURRENCY_LABELS, usageCurrencyRateNote } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
@@ -97,11 +98,13 @@ function ToggleRow({
 
 function SettingsPopover({
   preferences,
+  exchangeRates,
   onClose,
   onOpenAbout,
   onUpdate,
 }: {
   readonly preferences: UsagePreferences;
+  readonly exchangeRates: ExchangeRateSnapshot;
   readonly onClose: () => void;
   readonly onOpenAbout: () => void;
   readonly onUpdate: (patch: UsagePreferencesPatch) => void;
@@ -181,8 +184,8 @@ function SettingsPopover({
         <InfoIcon size={14} />
       </button>
       <p className="settings-note">
-        {USAGE_CURRENCY_RATE_NOTES[preferences.currency]} Icon-only display always keeps the menu
-        bar icon visible.
+        {usageCurrencyRateNote(preferences.currency, exchangeRates)} Icon-only display always keeps
+        the menu bar icon visible.
       </p>
     </div>
   );
@@ -286,9 +289,11 @@ function MetricBlock({
 function Totals({
   summary,
   currency,
+  exchangeRates,
 }: {
   readonly summary: RangeSummary;
   readonly currency: UsageCurrency;
+  readonly exchangeRates: ExchangeRateSnapshot;
 }) {
   const total = Math.max(1, summary.totalTokens);
   const entries = [
@@ -316,7 +321,7 @@ function Totals({
         ))}
         <MetricBlock
           label="Cache savings"
-          value={formatCurrency(summary.cacheSavingsUsd, currency)}
+          value={formatCurrency(summary.cacheSavingsUsd, currency, exchangeRates)}
           detail="API estimate"
         />
       </div>
@@ -329,11 +334,13 @@ function BreakdownTable({
   kind,
   metric,
   currency,
+  exchangeRates,
 }: {
   readonly summary: RangeSummary;
   readonly kind: BreakdownKind;
   readonly metric: UsageMetric;
   readonly currency: UsageCurrency;
+  readonly exchangeRates: ExchangeRateSnapshot;
 }) {
   const rows = useMemo(() => {
     const source = kind === "models" ? summary.models : summary.modes;
@@ -385,7 +392,9 @@ function BreakdownTable({
                   {kind === "modes" ? (
                     <td className="mode-cell">{formatMode(row.mode ?? "unknown")}</td>
                   ) : null}
-                  <td className="numeric strong-cell">{formatCurrency(row.costUsd, currency)}</td>
+                  <td className="numeric strong-cell">
+                    {formatCurrency(row.costUsd, currency, exchangeRates)}
+                  </td>
                   <td>
                     <div className="share-cell">
                       <span>{formatPercent(share)}</span>
@@ -521,13 +530,13 @@ export function App() {
   const summary = snapshot.ranges[range];
   const primaryValue =
     metric === "cost"
-      ? formatCurrency(summary.costUsd, preferences.currency)
+      ? formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)
       : formatTokens(summary.totalTokens);
   const primaryLabel = metric === "cost" ? "API estimate" : "Processed tokens";
   const secondaryValue =
     metric === "cost"
       ? formatTokens(summary.totalTokens)
-      : formatCurrency(summary.costUsd, preferences.currency);
+      : formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates);
   const secondaryLabel = metric === "cost" ? "Processed tokens" : "API estimate";
 
   return (
@@ -575,6 +584,7 @@ export function App() {
             {settingsOpen ? (
               <SettingsPopover
                 preferences={preferences}
+                exchangeRates={snapshot.exchangeRates}
                 onClose={() => setSettingsOpen(false)}
                 onOpenAbout={openAbout}
                 onUpdate={updatePreferences}
@@ -629,12 +639,21 @@ export function App() {
                 : `${formatCount(snapshot.scannedFiles)} transcript files`}
             </span>
           </div>
-          <UsageChart summary={summary} metric={metric} currency={preferences.currency} />
+          <UsageChart
+            summary={summary}
+            metric={metric}
+            currency={preferences.currency}
+            exchangeRates={snapshot.exchangeRates}
+          />
         </section>
 
         <WeeklyLimits snapshot={snapshot} />
 
-        <Totals summary={summary} currency={preferences.currency} />
+        <Totals
+          summary={summary}
+          currency={preferences.currency}
+          exchangeRates={snapshot.exchangeRates}
+        />
 
         <section className="panel breakdown-panel" aria-labelledby="breakdown-heading">
           <div className="section-heading">
@@ -652,6 +671,7 @@ export function App() {
             kind={breakdown}
             metric={metric}
             currency={preferences.currency}
+            exchangeRates={snapshot.exchangeRates}
           />
         </section>
 

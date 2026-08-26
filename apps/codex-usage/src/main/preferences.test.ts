@@ -17,7 +17,7 @@ describe("PreferencesStore", () => {
         store.update({ showInMenuBar: false }),
         store.update({ showMenuBarIcon: false }),
         store.update({ launchAtLogin: true }),
-        store.update({ currency: "HKD" }),
+        store.update({ currency: "INR" }),
         store.update({ menuBarDisplay: "codex-reset" }),
       ]);
 
@@ -26,7 +26,7 @@ describe("PreferencesStore", () => {
         showInMenuBar: false,
         showMenuBarIcon: false,
         launchAtLogin: true,
-        currency: "HKD",
+        currency: "INR",
         menuBarDisplay: "codex-reset",
       });
     } finally {

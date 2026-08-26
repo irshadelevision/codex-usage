@@ -48,10 +48,11 @@ function formatRangeDisplay(
   summary: RangeSummary,
   display: MenuBarDisplay,
   currency: UsagePreferences["currency"],
+  exchangeRates: UsageSnapshot["exchangeRates"],
 ): string {
   if (display === "tokens") return formatTokens(summary.totalTokens);
   if (display === "sessions") return new Intl.NumberFormat("en-US").format(summary.sessions);
-  return formatMenuBarCurrency(summary.costUsd, currency);
+  return formatMenuBarCurrency(summary.costUsd, currency, exchangeRates);
 }
 
 function usesCountdown(display: MenuBarDisplay): boolean {
@@ -101,6 +102,7 @@ function formatStatusTitle(
     snapshot.ranges[preferences.menuBarRange],
     preferences.menuBarDisplay,
     preferences.currency,
+    snapshot.exchangeRates,
   );
 }
 

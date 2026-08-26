@@ -14,6 +14,8 @@ The app includes:
 - LiteLLM pricing with a 24-hour offline cache;
 - USD, AED, SAR, BHD, QAR, OMR, JOD, and HKD display currencies using configured peg rates
   (HKD uses the `7.80` midpoint of its supplied band);
+- AUD, CNY, EUR, GBP, INR, KRW, and RUB using daily Frankfurter reference rates with a
+  24-hour local cache and last-known-rate fallback;
 - a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
 - a configurable menu-bar value: cost, tokens, sessions, Codex/Spark usage percentage only,
   percentage plus time left, percentage plus reset date, time left plus reset date, or icon only;
@@ -22,6 +24,8 @@ The app includes:
 - optional launch at login.
 
 Subscription billing is separate from the API-equivalent estimate shown by the app.
+Currency refreshes request only the fixed supported-currency list from Frankfurter; session,
+token, and cost data never leave the Mac.
 
 ## Run locally
 

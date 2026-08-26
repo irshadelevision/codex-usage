@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 
-import type { RangeSummary, UsageCurrency, UsageMetric } from "../shared/types.ts";
+import type {
+  ExchangeRateSnapshot,
+  RangeSummary,
+  UsageCurrency,
+  UsageMetric,
+} from "../shared/types.ts";
 import { formatCurrency, formatPointLabel, formatTokens } from "./format.ts";
 
 const VIEW_WIDTH = 960;
@@ -63,14 +68,16 @@ export function UsageChart({
   summary,
   metric,
   currency,
+  exchangeRates,
 }: {
   readonly summary: RangeSummary;
   readonly metric: UsageMetric;
   readonly currency: UsageCurrency;
+  readonly exchangeRates: ExchangeRateSnapshot;
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const format = (value: number) =>
-    metric === "cost" ? formatCurrency(value, currency) : formatTokens(value);
+    metric === "cost" ? formatCurrency(value, currency, exchangeRates) : formatTokens(value);
   const { area, line, points, ticks, toY } = useMemo(() => {
     const values = summary.series.map((point) => {
       const value = metric === "cost" ? point.costUsd : point.totalTokens;

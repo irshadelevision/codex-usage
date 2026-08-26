@@ -125,6 +125,30 @@ function makeSnapshot(): UsageSnapshot {
       knownModels: 412,
       fetchedAt: new Date(nowMs - 3_600_000).toISOString(),
     },
+    exchangeRates: {
+      status: "fresh",
+      source: "Frankfurter",
+      fetchedAt: new Date(nowMs - 3_600_000).toISOString(),
+      rates: {
+        AUD: 1.3963,
+        CNY: 6.718,
+        EUR: 0.85656,
+        GBP: 0.73383,
+        INR: 95.48,
+        KRW: 1_383.61,
+        RUB: 84.21,
+      },
+      rateDates: {
+        AUD: "2026-08-26",
+        CNY: "2026-08-26",
+        EUR: "2026-08-26",
+        GBP: "2026-08-26",
+        INR: "2026-08-26",
+        KRW: "2026-08-26",
+        RUB: "2026-08-26",
+      },
+      message: null,
+    },
     rateLimits: {
       status: "available",
       readAt: new Date(nowMs).toISOString(),
@@ -182,15 +206,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.18", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.19", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.18",
-        latestVersion: "0.1.18",
+        currentVersion: "0.1.19",
+        latestVersion: "0.1.19",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.18",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.19",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.18/Codex.Usage-0.1.18-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.19/Codex.Usage-0.1.19-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

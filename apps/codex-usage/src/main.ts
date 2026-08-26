@@ -12,6 +12,7 @@ import {
 } from "electron";
 
 import type { AppInfo, UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
+import { ExchangeRateReader } from "./main/exchangeRates.ts";
 import { MenuBarController } from "./main/menuBar.ts";
 import { PreferencesStore } from "./main/preferences.ts";
 import { CodexRateLimitReader } from "./main/rateLimits.ts";
@@ -53,6 +54,9 @@ const sessionsPath = NodePath.join(
 );
 const userDataPath = app.getPath("userData");
 const preferences = new PreferencesStore(NodePath.join(userDataPath, "preferences.json"));
+const exchangeRateReader = new ExchangeRateReader(
+  NodePath.join(userDataPath, "currency-rates.json"),
+);
 const rateLimitReader = new CodexRateLimitReader(app.getPath("home"), app.getVersion());
 const scanner = new CodexUsageScanner({
   sessionsPath,
@@ -85,12 +89,16 @@ function openAboutWindowInBackground() {
   void createAboutWindow().catch(reportAboutWindowFailure);
 }
 
-async function refreshUsage(): Promise<UsageSnapshot> {
+async function refreshUsage(forceExchangeRates = false): Promise<UsageSnapshot> {
   if (refreshInFlight !== null) return refreshInFlight;
   const nowMs = Date.now();
-  refreshInFlight = Promise.all([scanner.scan(nowMs), rateLimitReader.read(nowMs)])
-    .then(([usage, rateLimits]) => {
-      const snapshot = { ...usage, rateLimits } satisfies UsageSnapshot;
+  refreshInFlight = Promise.all([
+    scanner.scan(nowMs),
+    rateLimitReader.read(nowMs),
+    exchangeRateReader.read(nowMs, forceExchangeRates),
+  ])
+    .then(([usage, rateLimits, exchangeRates]) => {
+      const snapshot = { ...usage, exchangeRates, rateLimits } satisfies UsageSnapshot;
       latestSnapshot = snapshot;
       menuBar.sync(snapshot, preferences.get());
       broadcast("usage:snapshot", snapshot);
@@ -278,7 +286,7 @@ function installApplicationMenu() {
 }
 
 ipcMain.handle("usage:get-snapshot", () => latestSnapshot ?? refreshUsage());
-ipcMain.handle("usage:refresh", () => refreshUsage());
+ipcMain.handle("usage:refresh", () => refreshUsage(true));
 ipcMain.handle("usage:get-preferences", () => preferences.get());
 ipcMain.handle("usage:update-preferences", (_event, patch: UsagePreferencesPatch) =>
   updatePreferences(patch),

@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { UsageCurrency } from "./types.ts";
-import { convertUsd } from "./currency.ts";
+import type { ExchangeRateSnapshot, UsageCurrency } from "./types.ts";
+import { convertUsd, usageCurrencyRateNote } from "./currency.ts";
+
+const exchangeRates: ExchangeRateSnapshot = {
+  status: "fresh",
+  source: "Frankfurter",
+  fetchedAt: "2026-08-27T00:00:00.000Z",
+  rates: { INR: 95.48 },
+  rateDates: { INR: "2026-08-26" },
+  message: null,
+};
 
 describe("convertUsd", () => {
   it.each<readonly [UsageCurrency, number]>([
@@ -15,5 +24,17 @@ describe("convertUsd", () => {
     ["HKD", 7.8],
   ])("converts one USD to %s at the configured display rate", (currency, expected) => {
     expect(convertUsd(1, currency)).toBe(expected);
+  });
+
+  it("uses live snapshot rates without changing fixed peg conversions", () => {
+    expect(convertUsd(2, "INR", exchangeRates)).toBe(190.96);
+    expect(convertUsd(2, "AED", exchangeRates)).toBe(7.345);
+    expect(convertUsd(2, "EUR")).toBeNull();
+  });
+
+  it("describes the selected live rate and its effective date", () => {
+    expect(usageCurrencyRateNote("INR", exchangeRates)).toBe(
+      "Daily rate for Aug 26, 2026: 1 USD = 95.48 INR. Source: Frankfurter.",
+    );
   });
 });
