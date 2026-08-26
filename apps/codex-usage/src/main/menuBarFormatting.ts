@@ -1,18 +1,19 @@
-import type { CodexWeeklyRateLimit, MenuBarDisplay } from "../shared/types.ts";
+import { convertUsd } from "../shared/currency.ts";
+import type { CodexWeeklyRateLimit, MenuBarDisplay, UsageCurrency } from "../shared/types.ts";
 import {
   formatMenuBarReset,
   formatResetDateCompact,
   formatResetRemainingCompact,
 } from "../shared/resetTime.ts";
 
-export function formatMenuBarUsd(value: number): string {
+export function formatMenuBarCurrency(valueUsd: number, currency: UsageCurrency): string {
+  const value = convertUsd(Number.isFinite(valueUsd) ? valueUsd : 0, currency);
   const fractionDigits = value >= 100 ? 0 : 2;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  const formatted = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(value);
+  return currency === "AED" ? `AED ${formatted}` : `$${formatted}`;
 }
 
 export type RateLimitStatusDisplay = "usage" | "usage-time" | "usage-date" | "time-date";

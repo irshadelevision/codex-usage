@@ -1,6 +1,9 @@
 export const USAGE_RANGES = ["24h", "7d", "30d", "90d"] as const;
 export type UsageRange = (typeof USAGE_RANGES)[number];
 
+export const USAGE_CURRENCIES = ["USD", "AED"] as const;
+export type UsageCurrency = (typeof USAGE_CURRENCIES)[number];
+
 export type UsageMetric = "cost" | "tokens";
 export type BreakdownKind = "models" | "modes";
 
@@ -100,6 +103,7 @@ export interface UsagePreferences {
   readonly showInMenuBar: boolean;
   readonly showMenuBarIcon: boolean;
   readonly launchAtLogin: boolean;
+  readonly currency: UsageCurrency;
   readonly menuBarRange: UsageRange;
   readonly menuBarDisplay: MenuBarDisplay;
 }

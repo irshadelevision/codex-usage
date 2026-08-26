@@ -1,20 +1,21 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  formatMenuBarUsd,
+  formatMenuBarCurrency,
   formatRateLimitStatus,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
 
-describe("formatMenuBarUsd", () => {
+describe("formatMenuBarCurrency", () => {
   it("formats costs below 100 with cents", () => {
-    expect(formatMenuBarUsd(42.5)).toBe("$42.50");
+    expect(formatMenuBarCurrency(42.5, "USD")).toBe("$42.50");
+    expect(formatMenuBarCurrency(10, "AED")).toBe("AED 36.73");
   });
 
   it("formats costs at or above 100 without an invalid fraction range", () => {
-    expect(formatMenuBarUsd(100)).toBe("$100");
-    expect(formatMenuBarUsd(1_234.56)).toBe("$1,235");
+    expect(formatMenuBarCurrency(100, "USD")).toBe("$100");
+    expect(formatMenuBarCurrency(1_234.56, "USD")).toBe("$1,235");
   });
 });
 

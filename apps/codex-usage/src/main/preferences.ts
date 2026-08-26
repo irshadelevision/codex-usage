@@ -3,16 +3,18 @@ import * as NodePath from "node:path";
 
 import type {
   MenuBarDisplay,
+  UsageCurrency,
   UsagePreferences,
   UsagePreferencesPatch,
   UsageRange,
 } from "../shared/types.ts";
-import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
+import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
 
 const DEFAULT_PREFERENCES: UsagePreferences = {
   showInMenuBar: true,
   showMenuBarIcon: true,
   launchAtLogin: false,
+  currency: "USD",
   menuBarRange: "7d",
   menuBarDisplay: "cost",
 };
@@ -23,6 +25,10 @@ function isRange(value: unknown): value is UsageRange {
 
 function isMenuBarDisplay(value: unknown): value is MenuBarDisplay {
   return typeof value === "string" && MENU_BAR_DISPLAYS.includes(value as MenuBarDisplay);
+}
+
+function isCurrency(value: unknown): value is UsageCurrency {
+  return typeof value === "string" && USAGE_CURRENCIES.includes(value as UsageCurrency);
 }
 
 function decodePreferences(value: unknown): UsagePreferences {
@@ -41,6 +47,7 @@ function decodePreferences(value: unknown): UsagePreferences {
       typeof input["launchAtLogin"] === "boolean"
         ? input["launchAtLogin"]
         : DEFAULT_PREFERENCES.launchAtLogin,
+    currency: isCurrency(input["currency"]) ? input["currency"] : DEFAULT_PREFERENCES.currency,
     menuBarRange: isRange(input["menuBarRange"])
       ? input["menuBarRange"]
       : DEFAULT_PREFERENCES.menuBarRange,

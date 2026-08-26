@@ -153,6 +153,7 @@ export function createSampleApi(): CodexUsageApi {
     showInMenuBar: true,
     showMenuBarIcon: true,
     launchAtLogin: false,
+    currency: "USD",
     menuBarRange: "7d",
     menuBarDisplay: "cost",
   };
@@ -172,15 +173,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.15", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.16", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.15",
-        latestVersion: "0.1.15",
+        currentVersion: "0.1.16",
+        latestVersion: "0.1.16",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.15",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.16",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.15/Codex.Usage-0.1.15-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.16/Codex.Usage-0.1.16-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

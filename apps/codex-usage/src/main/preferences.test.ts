@@ -17,6 +17,7 @@ describe("PreferencesStore", () => {
         store.update({ showInMenuBar: false }),
         store.update({ showMenuBarIcon: false }),
         store.update({ launchAtLogin: true }),
+        store.update({ currency: "AED" }),
         store.update({ menuBarDisplay: "codex-reset" }),
       ]);
 
@@ -25,6 +26,7 @@ describe("PreferencesStore", () => {
         showInMenuBar: false,
         showMenuBarIcon: false,
         launchAtLogin: true,
+        currency: "AED",
         menuBarDisplay: "codex-reset",
       });
     } finally {
@@ -38,7 +40,7 @@ describe("PreferencesStore", () => {
     try {
       await NodeFSP.writeFile(path, JSON.stringify({ showInMenuBar: true }), "utf8");
       const store = new PreferencesStore(path);
-      expect(await store.load()).toMatchObject({ showMenuBarIcon: true });
+      expect(await store.load()).toMatchObject({ showMenuBarIcon: true, currency: "USD" });
     } finally {
       await NodeFSP.rm(directory, { recursive: true, force: true });
     }

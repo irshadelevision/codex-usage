@@ -7,21 +7,23 @@ import type {
   MenuBarDisplay,
   RangeSummary,
   UsageMetric,
+  UsageCurrency,
   UsagePreferences,
   UsagePreferencesPatch,
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
+import { USAGE_CURRENCY_LABELS } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
-import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
+import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
+  formatCurrency,
   formatMode,
   formatPercent,
   formatTokens,
   formatUpdatedAt,
-  formatUsd,
   formatWindow,
   rangeLabel,
 } from "./format.ts";
@@ -108,7 +110,7 @@ function SettingsPopover({
   return (
     <div id="usage-settings" className="settings-popover" role="dialog" aria-label="Usage settings">
       <div className="settings-heading">
-        <strong>Menu bar</strong>
+        <strong>Settings</strong>
         <button
           type="button"
           className="icon-button quiet"
@@ -134,6 +136,19 @@ function SettingsPopover({
         checked={preferences.launchAtLogin}
         onChange={(launchAtLogin) => onUpdate({ launchAtLogin })}
       />
+      <label className="settings-select-row">
+        <span>Currency</span>
+        <select
+          value={preferences.currency}
+          onChange={(event) => onUpdate({ currency: event.target.value as UsageCurrency })}
+        >
+          {USAGE_CURRENCIES.map((currency) => (
+            <option key={currency} value={currency}>
+              {USAGE_CURRENCY_LABELS[currency]}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="settings-select-row">
         <span className={rangeEnabled ? undefined : "disabled-label"}>Displayed range</span>
         <select
@@ -166,7 +181,7 @@ function SettingsPopover({
         <InfoIcon size={14} />
       </button>
       <p className="settings-note">
-        Click the status item to open the usage menu. Icon-only display always keeps the icon
+        AED uses the fixed rate 1 USD = 3.6725 AED. Icon-only display always keeps the menu bar icon
         visible.
       </p>
     </div>
@@ -268,7 +283,13 @@ function MetricBlock({
   );
 }
 
-function Totals({ summary }: { readonly summary: RangeSummary }) {
+function Totals({
+  summary,
+  currency,
+}: {
+  readonly summary: RangeSummary;
+  readonly currency: UsageCurrency;
+}) {
   const total = Math.max(1, summary.totalTokens);
   const entries = [
     ["Processed tokens", summary.totalTokens, 1],
@@ -295,7 +316,7 @@ function Totals({ summary }: { readonly summary: RangeSummary }) {
         ))}
         <MetricBlock
           label="Cache savings"
-          value={formatUsd(summary.cacheSavingsUsd)}
+          value={formatCurrency(summary.cacheSavingsUsd, currency)}
           detail="API estimate"
         />
       </div>
@@ -307,10 +328,12 @@ function BreakdownTable({
   summary,
   kind,
   metric,
+  currency,
 }: {
   readonly summary: RangeSummary;
   readonly kind: BreakdownKind;
   readonly metric: UsageMetric;
+  readonly currency: UsageCurrency;
 }) {
   const rows = useMemo(() => {
     const source = kind === "models" ? summary.models : summary.modes;
@@ -357,7 +380,7 @@ function BreakdownTable({
               return (
                 <tr key={row.key}>
                   <td className="row-name">{kind === "modes" ? formatMode(row.key) : row.key}</td>
-                  <td className="numeric strong-cell">{formatUsd(row.costUsd)}</td>
+                  <td className="numeric strong-cell">{formatCurrency(row.costUsd, currency)}</td>
                   <td>
                     <div className="share-cell">
                       <span>{formatPercent(share)}</span>
@@ -492,10 +515,14 @@ export function App() {
 
   const summary = snapshot.ranges[range];
   const primaryValue =
-    metric === "cost" ? formatUsd(summary.costUsd) : formatTokens(summary.totalTokens);
+    metric === "cost"
+      ? formatCurrency(summary.costUsd, preferences.currency)
+      : formatTokens(summary.totalTokens);
   const primaryLabel = metric === "cost" ? "API estimate" : "Processed tokens";
   const secondaryValue =
-    metric === "cost" ? formatTokens(summary.totalTokens) : formatUsd(summary.costUsd);
+    metric === "cost"
+      ? formatTokens(summary.totalTokens)
+      : formatCurrency(summary.costUsd, preferences.currency);
   const secondaryLabel = metric === "cost" ? "Processed tokens" : "API estimate";
 
   return (
@@ -597,12 +624,12 @@ export function App() {
                 : `${formatCount(snapshot.scannedFiles)} transcript files`}
             </span>
           </div>
-          <UsageChart summary={summary} metric={metric} />
+          <UsageChart summary={summary} metric={metric} currency={preferences.currency} />
         </section>
 
         <WeeklyLimits snapshot={snapshot} />
 
-        <Totals summary={summary} />
+        <Totals summary={summary} currency={preferences.currency} />
 
         <section className="panel breakdown-panel" aria-labelledby="breakdown-heading">
           <div className="section-heading">
@@ -615,7 +642,12 @@ export function App() {
               onChange={setBreakdown}
             />
           </div>
-          <BreakdownTable summary={summary} kind={breakdown} metric={metric} />
+          <BreakdownTable
+            summary={summary}
+            kind={breakdown}
+            metric={metric}
+            currency={preferences.currency}
+          />
         </section>
 
         <footer className="status-footer">

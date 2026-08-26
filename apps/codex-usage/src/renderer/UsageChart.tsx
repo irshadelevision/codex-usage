@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
-import type { RangeSummary, UsageMetric } from "../shared/types.ts";
-import { formatPointLabel, formatTokens, formatUsd } from "./format.ts";
+import type { RangeSummary, UsageCurrency, UsageMetric } from "../shared/types.ts";
+import { formatCurrency, formatPointLabel, formatTokens } from "./format.ts";
 
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 250;
@@ -62,12 +62,15 @@ export function niceScale(peak: number, count: number) {
 export function UsageChart({
   summary,
   metric,
+  currency,
 }: {
   readonly summary: RangeSummary;
   readonly metric: UsageMetric;
+  readonly currency: UsageCurrency;
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const format = metric === "cost" ? formatUsd : formatTokens;
+  const format = (value: number) =>
+    metric === "cost" ? formatCurrency(value, currency) : formatTokens(value);
   const { area, line, points, ticks, toY } = useMemo(() => {
     const values = summary.series.map((point) => {
       const value = metric === "cost" ? point.costUsd : point.totalTokens;

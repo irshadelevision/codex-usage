@@ -2,22 +2,24 @@ import { ArrowUpRightIcon, InfoIcon, PowerIcon, RefreshCwIcon, Settings2Icon } f
 import { useEffect, useState } from "react";
 
 import appIconUrl from "../../build/icon.png";
+import { USAGE_CURRENCY_LABELS } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
 import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
 import type {
   CodexWeeklyRateLimit,
   MenuBarDisplay,
+  UsageCurrency,
   UsagePreferences,
   UsagePreferencesPatch,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
+import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
+  formatCurrency,
   formatMode,
   formatTokens,
   formatUpdatedAt,
-  formatUsd,
   rangeLabel,
 } from "./format.ts";
 import { api } from "./api.ts";
@@ -285,7 +287,7 @@ export function MenuBarView() {
           <div className="menu-activity-metrics">
             <div>
               <span>Cost</span>
-              <strong>{formatUsd(summary.costUsd)}</strong>
+              <strong>{formatCurrency(summary.costUsd, preferences.currency)}</strong>
             </div>
             <div>
               <span>Tokens</span>
@@ -313,6 +315,21 @@ export function MenuBarView() {
             </h2>
             <span>Choose what appears above</span>
           </div>
+          <label className="menu-display-field">
+            <span>Currency</span>
+            <select
+              value={preferences.currency}
+              onChange={(event) =>
+                updatePreferences({ currency: event.target.value as UsageCurrency })
+              }
+            >
+              {USAGE_CURRENCIES.map((currency) => (
+                <option key={currency} value={currency}>
+                  {USAGE_CURRENCY_LABELS[currency]}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="menu-display-field">
             <span>Displayed value</span>
             <select

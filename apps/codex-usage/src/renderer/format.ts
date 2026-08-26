@@ -1,8 +1,13 @@
-import type { RangeSummary, UsageRange } from "../shared/types.ts";
+import { convertUsd } from "../shared/currency.ts";
+import type { RangeSummary, UsageCurrency, UsageRange } from "../shared/types.ts";
 
 const USD = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const AED = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
@@ -25,8 +30,9 @@ function finiteOrZero(value: number): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-export function formatUsd(value: number): string {
-  return USD.format(finiteOrZero(value));
+export function formatCurrency(valueUsd: number, currency: UsageCurrency): string {
+  const value = convertUsd(finiteOrZero(valueUsd), currency);
+  return currency === "AED" ? `AED ${AED.format(value)}` : USD.format(value);
 }
 
 export function formatTokens(value: number): string {

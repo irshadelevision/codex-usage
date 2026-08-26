@@ -9,7 +9,7 @@ import type {
   UsageSnapshot,
 } from "../shared/types.ts";
 import {
-  formatMenuBarUsd,
+  formatMenuBarCurrency,
   formatRateLimitStatus,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
@@ -44,10 +44,14 @@ function formatTokens(value: number): string {
   return TOKEN_FORMAT.format(value);
 }
 
-function formatRangeDisplay(summary: RangeSummary, display: MenuBarDisplay): string {
+function formatRangeDisplay(
+  summary: RangeSummary,
+  display: MenuBarDisplay,
+  currency: UsagePreferences["currency"],
+): string {
   if (display === "tokens") return formatTokens(summary.totalTokens);
   if (display === "sessions") return new Intl.NumberFormat("en-US").format(summary.sessions);
-  return formatMenuBarUsd(summary.costUsd);
+  return formatMenuBarCurrency(summary.costUsd, currency);
 }
 
 function usesCountdown(display: MenuBarDisplay): boolean {
@@ -93,7 +97,11 @@ function formatStatusTitle(
   if (preferences.menuBarDisplay === "spark-reset") {
     return formatSparkStatus(formatRateLimitStatus(snapshot.rateLimits.spark, "time-date", nowMs));
   }
-  return formatRangeDisplay(snapshot.ranges[preferences.menuBarRange], preferences.menuBarDisplay);
+  return formatRangeDisplay(
+    snapshot.ranges[preferences.menuBarRange],
+    preferences.menuBarDisplay,
+    preferences.currency,
+  );
 }
 
 interface MenuBarControllerInput {
