@@ -1,6 +1,6 @@
 {
   "name": "@codex-usage/app",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "private": true,
   "description": "A private, local-first macOS dashboard for Codex usage.",
   "author": "Irshad Ibrahim",
@@ -33,6 +33,7 @@
     "appId": "com.codexusage.app",
     "productName": "Codex Usage",
     "asar": true,
+    "afterPack": "scripts/ensure-macos-bundle-signature.mjs",
     "directories": {
       "output": "release"
     },
