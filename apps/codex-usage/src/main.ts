@@ -1,4 +1,5 @@
 import * as NodePath from "node:path";
+import * as NodeProcess from "node:process";
 import * as NodeURL from "node:url";
 
 import {
@@ -12,6 +13,7 @@ import {
 } from "electron";
 
 import type { AppInfo, UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
+import { MenuBarLifecycle } from "./main/appLifecycle.ts";
 import { ExchangeRateReader } from "./main/exchangeRates.ts";
 import { MENU_BAR_POPOVER_HEIGHT, MenuBarController } from "./main/menuBar.ts";
 import { PreferencesStore } from "./main/preferences.ts";
@@ -36,7 +38,7 @@ let mainWindow: BrowserWindow | null = null;
 let aboutWindow: BrowserWindow | null = null;
 let latestSnapshot: UsageSnapshot | null = null;
 let refreshInFlight: Promise<UsageSnapshot> | null = null;
-let quitting = false;
+let menuBarPopoverSenderId: number | null = null;
 let refreshTimer: NodeJS.Timeout | null = null;
 
 function reportBackgroundRefreshFailure(cause: unknown) {
@@ -71,6 +73,7 @@ function broadcast(channel: string, value: unknown) {
 }
 
 function openWindow() {
+  if (NodeProcess.platform === "darwin") void app.dock?.show();
   if (mainWindow === null || mainWindow.isDestroyed()) {
     void createWindow();
     return;
@@ -127,6 +130,26 @@ const menuBar = new MenuBarController({
   loadPopoverWindow: (window) => loadRendererView(window, "menu-bar"),
 });
 
+async function moveToMenuBar() {
+  if (!preferences.get().showInMenuBar) {
+    await updatePreferences({ showInMenuBar: true });
+  }
+  menuBar.hidePopover();
+  aboutWindow?.hide();
+  mainWindow?.hide();
+  if (NodeProcess.platform === "darwin") app.dock?.hide();
+}
+
+function moveToMenuBarInBackground() {
+  void moveToMenuBar().catch((cause: unknown) => {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    console.error(`[Codex Usage] Could not move to the menu bar: ${message}`);
+    openWindow();
+  });
+}
+
+const lifecycle = new MenuBarLifecycle(moveToMenuBarInBackground);
+
 async function loadRendererView(window: BrowserWindow, view?: string) {
   if (devUrl) {
     const url = new URL(devUrl);
@@ -171,6 +194,11 @@ function createMenuBarPopoverWindow() {
     visibleOnFullScreen: true,
     skipTransformProcessType: true,
   });
+  const senderId = window.webContents.id;
+  menuBarPopoverSenderId = senderId;
+  window.on("closed", () => {
+    if (menuBarPopoverSenderId === senderId) menuBarPopoverSenderId = null;
+  });
   return window;
 }
 
@@ -199,12 +227,8 @@ async function createWindow() {
   });
   mainWindow = window;
   window.once("ready-to-show", () => window.show());
-  window.on("close", (event) => {
-    if (!quitting && preferences.get().showInMenuBar) {
-      event.preventDefault();
-      window.hide();
-    }
-  });
+  window.on("close", (event) => lifecycle.intercept(event));
+  window.on("minimize", () => lifecycle.redirect(() => window.restore()));
   window.on("closed", () => {
     if (mainWindow === window) mainWindow = null;
   });
@@ -265,7 +289,11 @@ function installApplicationMenu() {
         { role: "hideOthers" },
         { role: "unhide" },
         { type: "separator" },
-        { role: "quit" },
+        {
+          label: "Close to Menu Bar",
+          accelerator: "CmdOrCtrl+Q",
+          click: moveToMenuBarInBackground,
+        },
       ],
     },
     {
@@ -305,9 +333,8 @@ ipcMain.handle("app:open-about", () => {
   return createAboutWindow();
 });
 ipcMain.handle("app:close-menu-bar-popover", () => menuBar.hidePopover());
-ipcMain.handle("app:quit", () => {
-  quitting = true;
-  app.quit();
+ipcMain.handle("app:quit", (event) => {
+  if (lifecycle.requestQuit(event.sender.id, menuBarPopoverSenderId)) app.quit();
 });
 ipcMain.handle("app:open-release", async (_event, url: unknown) => {
   if (typeof url !== "string" || !isTrustedReleaseUrl(url)) {
@@ -324,8 +351,8 @@ ipcMain.handle("app:download-update", async (_event, url: unknown) => {
 
 app.on("second-instance", openWindow);
 app.on("activate", openWindow);
-app.on("before-quit", () => {
-  quitting = true;
+app.on("before-quit", (event) => lifecycle.intercept(event));
+app.on("will-quit", () => {
   if (refreshTimer !== null) clearInterval(refreshTimer);
   menuBar.destroy();
 });
@@ -347,5 +374,6 @@ void start().catch((cause: unknown) => {
   const message = cause instanceof Error ? cause.message : String(cause);
   console.error(`[Codex Usage] Startup failed: ${message}`);
   dialog.showErrorBox("Codex Usage could not start", message);
+  lifecycle.allowQuit();
   app.quit();
 });
