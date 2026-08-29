@@ -308,14 +308,11 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
         </div>
         <span>{status}</span>
       </div>
-      <div className="rate-limit-groups">
-        <div className="rate-limit-group" aria-label="Codex limits">
-          <RateLimitCard
-            label="Codex weekly"
-            limit={limits.codex}
-            nowMs={nowMs}
-            remainingLabel="remaining this week"
-          />
+      <div className="rate-limit-families">
+        <div
+          className={`rate-limit-family${limits.codexFiveHour === null ? "" : " has-five-hour"}`}
+          aria-label="Codex limits"
+        >
           {limits.codexFiveHour === null ? null : (
             <RateLimitCard
               label="Codex 5-hour"
@@ -324,14 +321,17 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
               remainingLabel="remaining in this window"
             />
           )}
-        </div>
-        <div className="rate-limit-group" aria-label="Spark limits">
           <RateLimitCard
-            label="Spark weekly"
-            limit={limits.spark}
+            label="Codex weekly"
+            limit={limits.codex}
             nowMs={nowMs}
             remainingLabel="remaining this week"
           />
+        </div>
+        <div
+          className={`rate-limit-family${limits.sparkFiveHour === null ? "" : " has-five-hour"}`}
+          aria-label="Spark limits"
+        >
           {limits.sparkFiveHour === null ? null : (
             <RateLimitCard
               label="Spark 5-hour"
@@ -340,6 +340,12 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
               remainingLabel="remaining in this window"
             />
           )}
+          <RateLimitCard
+            label="Spark weekly"
+            limit={limits.spark}
+            nowMs={nowMs}
+            remainingLabel="remaining this week"
+          />
         </div>
       </div>
       {limits.resetCredits === null ? null : (

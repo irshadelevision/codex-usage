@@ -455,17 +455,23 @@ button:disabled {
   text-transform: capitalize;
 }
 
-.rate-limit-groups {
+.rate-limit-families {
+  display: flex;
+  flex-direction: column;
+}
+
+.rate-limit-family {
   display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rate-limit-family.has-five-hour {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.rate-limit-group {
-  min-width: 0;
-}
-
-.rate-limit-group + .rate-limit-group {
-  border-left: 1px solid var(--border);
+.rate-limit-family + .rate-limit-family {
+  border-top: 1px solid var(--border);
 }
 
 .rate-limit-card {
@@ -479,8 +485,8 @@ button:disabled {
   padding: 16px;
 }
 
-.rate-limit-group > .rate-limit-card + .rate-limit-card {
-  border-top: 1px solid var(--border);
+.rate-limit-family.has-five-hour > .rate-limit-card + .rate-limit-card {
+  border-left: 1px solid var(--border);
 }
 
 .rate-limit-card.unavailable {
@@ -1689,11 +1695,11 @@ html.menu-bar-document #root {
     gap: 10px;
   }
 
-  .rate-limit-groups {
+  .rate-limit-family.has-five-hour {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .rate-limit-group + .rate-limit-group {
+  .rate-limit-family.has-five-hour > .rate-limit-card + .rate-limit-card {
     border-top: 1px solid var(--border);
     border-left: 0;
   }
