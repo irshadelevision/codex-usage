@@ -311,7 +311,6 @@ export function MenuBarView() {
             <span>{planLabel(snapshot)}</span>
           </div>
           <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
-          <LimitRow label="Spark weekly" limit={snapshot.rateLimits.spark} nowMs={nowMs} />
           {snapshot.rateLimits.codexFiveHour === null ? null : (
             <LimitRow
               label="Codex 5-hour"
@@ -319,6 +318,7 @@ export function MenuBarView() {
               nowMs={nowMs}
             />
           )}
+          <LimitRow label="Spark weekly" limit={snapshot.rateLimits.spark} nowMs={nowMs} />
           {snapshot.rateLimits.sparkFiveHour === null ? null : (
             <LimitRow
               label="Spark 5-hour"

@@ -308,46 +308,40 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
         </div>
         <span>{status}</span>
       </div>
-      <div className="rate-limits-grid">
-        <RateLimitCard
-          label="Codex weekly"
-          limit={limits.codex}
-          nowMs={nowMs}
-          remainingLabel="remaining this week"
-        />
-        <RateLimitCard
-          label="Spark weekly"
-          limit={limits.spark}
-          nowMs={nowMs}
-          remainingLabel="remaining this week"
-        />
+      <div className="rate-limit-groups">
+        <div className="rate-limit-group" aria-label="Codex limits">
+          <RateLimitCard
+            label="Codex weekly"
+            limit={limits.codex}
+            nowMs={nowMs}
+            remainingLabel="remaining this week"
+          />
+          {limits.codexFiveHour === null ? null : (
+            <RateLimitCard
+              label="Codex 5-hour"
+              limit={limits.codexFiveHour}
+              nowMs={nowMs}
+              remainingLabel="remaining in this window"
+            />
+          )}
+        </div>
+        <div className="rate-limit-group" aria-label="Spark limits">
+          <RateLimitCard
+            label="Spark weekly"
+            limit={limits.spark}
+            nowMs={nowMs}
+            remainingLabel="remaining this week"
+          />
+          {limits.sparkFiveHour === null ? null : (
+            <RateLimitCard
+              label="Spark 5-hour"
+              limit={limits.sparkFiveHour}
+              nowMs={nowMs}
+              remainingLabel="remaining in this window"
+            />
+          )}
+        </div>
       </div>
-      {limits.codexFiveHour === null && limits.sparkFiveHour === null ? null : (
-        <>
-          <div className="rate-limit-subheading">
-            <strong>5-hour limits</strong>
-            <span>Only shown when reported by Codex</span>
-          </div>
-          <div className="rate-limits-grid five-hour-limits-grid">
-            {limits.codexFiveHour === null ? null : (
-              <RateLimitCard
-                label="Codex 5-hour"
-                limit={limits.codexFiveHour}
-                nowMs={nowMs}
-                remainingLabel="remaining in this window"
-              />
-            )}
-            {limits.sparkFiveHour === null ? null : (
-              <RateLimitCard
-                label="Spark 5-hour"
-                limit={limits.sparkFiveHour}
-                nowMs={nowMs}
-                remainingLabel="remaining in this window"
-              />
-            )}
-          </div>
-        </>
-      )}
       {limits.resetCredits === null ? null : (
         <ResetCreditCard resetCredits={limits.resetCredits} nowMs={nowMs} />
       )}
