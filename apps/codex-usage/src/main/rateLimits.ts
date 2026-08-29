@@ -5,10 +5,11 @@ import * as NodeReadline from "node:readline";
 
 import type {
   CodexRateLimitResetCredits,
+  CodexRateLimitWindow,
   CodexRateLimits,
-  CodexWeeklyRateLimit,
 } from "../shared/types.ts";
 
+const FIVE_HOUR_MINUTES = 5 * 60;
 const WEEK_MINUTES = 7 * 24 * 60;
 const APP_SERVER_TIMEOUT_MS = 15_000;
 
@@ -75,21 +76,35 @@ function parseWindow(value: unknown): RateLimitWindow | null {
   };
 }
 
+function bucketWindows(bucket: Record<string, unknown>): readonly RateLimitWindow[] {
+  return [parseWindow(bucket["primary"]), parseWindow(bucket["secondary"])].filter(
+    (window): window is RateLimitWindow => window !== null,
+  );
+}
+
+function fiveHourWindow(bucket: Record<string, unknown>): RateLimitWindow | null {
+  return (
+    bucketWindows(bucket).find(
+      ({ windowDurationMins }) => windowDurationMins === FIVE_HOUR_MINUTES,
+    ) ?? null
+  );
+}
+
 function weeklyWindow(bucket: Record<string, unknown>): RateLimitWindow | null {
-  const windows = [parseWindow(bucket["primary"]), parseWindow(bucket["secondary"])]
-    .filter((window): window is RateLimitWindow => window !== null)
-    .toSorted((left, right) => (right.windowDurationMins ?? 0) - (left.windowDurationMins ?? 0));
+  const windows = bucketWindows(bucket).toSorted(
+    (left, right) => (right.windowDurationMins ?? 0) - (left.windowDurationMins ?? 0),
+  );
   const longest = windows[0];
   if (longest === undefined || (longest.windowDurationMins ?? 0) < WEEK_MINUTES) return null;
   return longest;
 }
 
-function toWeeklyLimit(
+function toRateLimit(
   fallbackId: string,
   fallbackName: string,
   bucket: Record<string, unknown>,
-): CodexWeeklyRateLimit | null {
-  const window = weeklyWindow(bucket);
+  window: RateLimitWindow | null,
+): CodexRateLimitWindow | null {
   if (window === null) return null;
   const limitId =
     typeof bucket["limitId"] === "string" && bucket["limitId"].length > 0
@@ -132,9 +147,22 @@ export function parseRateLimitResponse(value: unknown, readAt: string): CodexRat
     const name = typeof bucket["limitName"] === "string" ? bucket["limitName"] : "";
     return id.toLowerCase().includes("spark") || name.toLowerCase().includes("spark");
   })?.bucket;
-  const codex = codexBucket === null ? null : toWeeklyLimit("codex", "Codex plan", codexBucket);
+  const codex =
+    codexBucket === null
+      ? null
+      : toRateLimit("codex", "Codex plan", codexBucket, weeklyWindow(codexBucket));
   const spark =
-    sparkBucket === undefined ? null : toWeeklyLimit("codex-spark", "Codex Spark", sparkBucket);
+    sparkBucket === undefined
+      ? null
+      : toRateLimit("codex-spark", "Codex Spark", sparkBucket, weeklyWindow(sparkBucket));
+  const codexFiveHour =
+    codexBucket === null
+      ? null
+      : toRateLimit("codex", "Codex plan", codexBucket, fiveHourWindow(codexBucket));
+  const sparkFiveHour =
+    sparkBucket === undefined
+      ? null
+      : toRateLimit("codex-spark", "Codex Spark", sparkBucket, fiveHourWindow(sparkBucket));
   const resetCredits = parseResetCredits(response?.["rateLimitResetCredits"]);
   const planType =
     typeof account?.["planType"] === "string"
@@ -148,15 +176,24 @@ export function parseRateLimitResponse(value: unknown, readAt: string): CodexRat
             : null;
 
   return {
-    status: codex === null && spark === null && resetCredits === null ? "unavailable" : "available",
+    status:
+      codex === null &&
+      spark === null &&
+      codexFiveHour === null &&
+      sparkFiveHour === null &&
+      resetCredits === null
+        ? "unavailable"
+        : "available",
     readAt,
     planType,
     codex,
     spark,
+    codexFiveHour,
+    sparkFiveHour,
     resetCredits,
     message:
-      codex === null && spark === null
-        ? "The Codex CLI session did not report weekly usage limits."
+      codex === null && spark === null && codexFiveHour === null && sparkFiveHour === null
+        ? "The Codex CLI session did not report supported usage limits."
         : null,
   };
 }
@@ -300,6 +337,8 @@ export class CodexRateLimitReader {
         planType: null,
         codex: null,
         spark: null,
+        codexFiveHour: null,
+        sparkFiveHour: null,
         resetCredits: null,
         message: "Codex CLI was not found. Set CODEX_BINARY to its executable path.",
       };
@@ -323,6 +362,8 @@ export class CodexRateLimitReader {
         planType: null,
         codex: null,
         spark: null,
+        codexFiveHour: null,
+        sparkFiveHour: null,
         resetCredits: null,
         message,
       };

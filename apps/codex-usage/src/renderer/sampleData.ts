@@ -160,6 +160,22 @@ function makeSnapshot(): UsageSnapshot {
         resetsAt: new Date(nowMs + 5.4 * 24 * 60 * 60 * 1000).toISOString(),
         windowDurationMins: 10_080,
       },
+      codexFiveHour: {
+        limitId: "codex",
+        name: "Codex plan",
+        usedPercent: 24,
+        remainingPercent: 76,
+        resetsAt: new Date(nowMs + 2.1 * 60 * 60 * 1000).toISOString(),
+        windowDurationMins: 300,
+      },
+      sparkFiveHour: {
+        limitId: "codex_bengalfox",
+        name: "GPT-5.3-Codex-Spark",
+        usedPercent: 8,
+        remainingPercent: 92,
+        resetsAt: new Date(nowMs + 4.2 * 60 * 60 * 1000).toISOString(),
+        windowDurationMins: 300,
+      },
       resetCredits: {
         availableCount: 1,
         title: "Full reset",
@@ -201,15 +217,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.24", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.25", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.24",
-        latestVersion: "0.1.24",
+        currentVersion: "0.1.25",
+        latestVersion: "0.1.25",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.24",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.25",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.24/Codex.Usage-0.1.24-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.25/Codex.Usage-0.1.25-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

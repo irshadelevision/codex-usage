@@ -125,7 +125,7 @@ export type PricingStatus = "fresh" | "cached" | "unavailable";
 
 export type CodexRateLimitStatus = "available" | "stale" | "unavailable" | "not-installed";
 
-export interface CodexWeeklyRateLimit {
+export interface CodexRateLimitWindow {
   readonly limitId: string;
   readonly name: string;
   readonly usedPercent: number;
@@ -144,8 +144,10 @@ export interface CodexRateLimits {
   readonly status: CodexRateLimitStatus;
   readonly readAt: string;
   readonly planType: string | null;
-  readonly codex: CodexWeeklyRateLimit | null;
-  readonly spark: CodexWeeklyRateLimit | null;
+  readonly codex: CodexRateLimitWindow | null;
+  readonly spark: CodexRateLimitWindow | null;
+  readonly codexFiveHour: CodexRateLimitWindow | null;
+  readonly sparkFiveHour: CodexRateLimitWindow | null;
   readonly resetCredits: CodexRateLimitResetCredits | null;
   readonly message: string | null;
 }

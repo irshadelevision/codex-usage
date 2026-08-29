@@ -1,6 +1,6 @@
 import { CURRENCY_FRACTION_DIGITS, convertUsd } from "../shared/currency.ts";
 import type {
-  CodexWeeklyRateLimit,
+  CodexRateLimitWindow,
   ExchangeRateSnapshot,
   MenuBarDisplay,
   UsageCurrency,
@@ -87,7 +87,7 @@ export function getMenuBarPopoverPosition(
 }
 
 export function formatRateLimitStatus(
-  limit: CodexWeeklyRateLimit | null,
+  limit: CodexRateLimitWindow | null,
   display: RateLimitStatusDisplay,
   nowMs: number,
 ): string {

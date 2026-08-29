@@ -16,7 +16,7 @@ import {
 } from "../shared/resetTime.ts";
 import type {
   CodexRateLimitResetCredits,
-  CodexWeeklyRateLimit,
+  CodexRateLimitWindow,
   MenuBarDisplay,
   UsageCurrency,
   UsagePreferences,
@@ -85,7 +85,7 @@ function LimitRow({
   nowMs,
 }: {
   readonly label: string;
-  readonly limit: CodexWeeklyRateLimit | null;
+  readonly limit: CodexRateLimitWindow | null;
   readonly nowMs: number;
 }) {
   const usedPercent = Math.min(100, Math.max(0, limit?.usedPercent ?? 0));
@@ -97,7 +97,7 @@ function LimitRow({
       </div>
       <progress
         className="menu-limit-track"
-        aria-label={`${label} weekly usage`}
+        aria-label={`${label} usage`}
         max={100}
         value={usedPercent}
       />
@@ -305,13 +305,27 @@ export function MenuBarView() {
           </button>
         )}
 
-        <section className="menu-weekly-section" aria-labelledby="menu-weekly-heading">
+        <section className="menu-weekly-section" aria-labelledby="menu-limits-heading">
           <div className="menu-section-heading">
-            <h2 id="menu-weekly-heading">Weekly limits</h2>
+            <h2 id="menu-limits-heading">Usage limits</h2>
             <span>{planLabel(snapshot)}</span>
           </div>
-          <LimitRow label="Codex" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
-          <LimitRow label="Spark" limit={snapshot.rateLimits.spark} nowMs={nowMs} />
+          <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
+          <LimitRow label="Spark weekly" limit={snapshot.rateLimits.spark} nowMs={nowMs} />
+          {snapshot.rateLimits.codexFiveHour === null ? null : (
+            <LimitRow
+              label="Codex 5-hour"
+              limit={snapshot.rateLimits.codexFiveHour}
+              nowMs={nowMs}
+            />
+          )}
+          {snapshot.rateLimits.sparkFiveHour === null ? null : (
+            <LimitRow
+              label="Spark 5-hour"
+              limit={snapshot.rateLimits.sparkFiveHour}
+              nowMs={nowMs}
+            />
+          )}
           {snapshot.rateLimits.resetCredits === null ? null : (
             <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
           )}

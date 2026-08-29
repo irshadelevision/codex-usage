@@ -1,120 +1,80 @@
-# T3 Code
+# Codex Usage
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+Codex Usage is a local-first macOS menu-bar app and dashboard for understanding activity recorded
+by the Codex CLI and Codex desktop app. It reads local Codex sessions, estimates API-equivalent
+token cost, and displays the account limits reported by the signed-in Codex CLI session.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, and OpenCode. If they're set up on your computer, T3 Code can control them.
+## Features
 
-## "Wait, what are you selling me?"
+- Rolling 24-hour, 7-day, 30-day, and 90-day activity views.
+- Hourly and daily cost/token graphs.
+- Processed, cached, uncached, output, and reasoning token totals.
+- Model, mode, and model-by-reasoning-mode breakdowns.
+- Codex and Spark weekly usage with percentage remaining, reset countdowns, and reset dates.
+- Conditional Codex and Spark 5-hour usage limits; a 5-hour row is hidden when the CLI does not
+  report that bucket for the account.
+- A display-only banked-reset indicator with its expiry when reset credits are reported. The app
+  never consumes a reset.
+- A true-black macOS dashboard and modern menu-bar popover.
+- Configurable menu-bar text for usage, remaining time, reset date, cost, tokens, or sessions, plus
+  an option to hide the icon when text is shown.
+- USD and common international currencies, using fixed peg rates where appropriate and daily
+  Frankfurter reference rates for supported floating currencies.
+- A native About window with the author, app version, GitHub update check, and latest-DMG download.
+- Optional launch at login and close/minimize-to-menu-bar behavior.
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+Session, token, and cost data stay on the Mac. Subscription billing is separate from the
+API-equivalent estimate displayed by the app.
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+## Requirements
 
-## Installation
+- macOS.
+- [Codex CLI](https://developers.openai.com/codex/cli) installed and authenticated with
+  `codex login`.
+- Existing Codex activity in `~/.codex/sessions` for local activity charts.
 
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build and OpenCode. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
+If Codex uses a different data directory, launch with `CODEX_HOME` set to that directory. If the
+CLI is installed in a custom location, set `CODEX_BINARY` to the executable's absolute path.
 
-### Try it out (install-free)
+## Install
 
-The easiest way to test T3 Code is to run the server in your terminal (requires Node.js 22.16+, 23.11+, or 24.10+):
+Download the latest Apple-silicon DMG from
+[GitHub Releases](https://github.com/irshadelevision/codex-usage/releases/latest), open it, and drag
+Codex Usage into Applications.
 
-```bash
-npx t3@latest
+Current release builds are ad-hoc signed rather than Developer ID notarized. If macOS quarantines a
+downloaded build, remove the quarantine attribute after confirming that the DMG came from this
+repository:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Codex Usage.app"
 ```
 
-This will launch T3 Code's backend on your machine as well as the local web app to control your agents.
+## Develop
 
-Tip: Use `npx t3@latest --help` for the full CLI reference.
+From the repository root:
 
-### Desktop app
-
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
-
-```bash
-winget install T3Tools.T3Code
+```sh
+pnpm install
+pnpm dev:codex-usage
 ```
 
-#### macOS (Homebrew)
+Useful commands:
 
-```bash
-brew install --cask t3-code
+```sh
+pnpm --filter @codex-usage/app test
+pnpm --filter @codex-usage/app typecheck
+pnpm build:codex-usage
+pnpm dist:codex-usage:mac
 ```
 
-#### Arch Linux (AUR)
+Release artifacts are written to `apps/codex-usage/release`.
 
-Stable:
+## Data sources
 
-```bash
-yay -S t3code-bin
-```
+- Local activity: Codex session JSONL files under the Codex home directory.
+- Account limits: the local Codex CLI app-server session.
+- Token pricing: LiteLLM pricing data with a local cache.
+- Floating exchange rates: Frankfurter reference rates with a local cache and last-known fallback.
 
-Nightly:
-
-```bash
-yay -S t3code-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
-
-## Documentation
-
-Full docs live in [docs/](./docs). There's no docs site yet.
-
-- [Install and first run](./docs/user/install.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Customize a project icon](./docs/user/project-settings.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- Linux: [run T3 Code as a background service](./docs/user/background-service.md)
-
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
-
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
-
-```bash
-curl -fsSL https://vite.plus | bash
-```
-
-#### Windows
-
-```bash
-irm https://vite.plus/ps1 | iex
-```
-
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
-
-```bash
-vp i
-```
-
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
-
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
-
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+The app does not require an exchange-rate API key.

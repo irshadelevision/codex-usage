@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseRateLimitResponse } from "./rateLimits.ts";
 
 describe("parseRateLimitResponse", () => {
-  it("selects the weekly Codex and Spark windows from the CLI session", () => {
+  it("selects the five-hour and weekly Codex and Spark windows from the CLI session", () => {
     const result = parseRateLimitResponse(
       {
         account: {
@@ -19,6 +19,11 @@ describe("parseRateLimitResponse", () => {
             codex: {
               limitId: "codex",
               primary: {
+                usedPercent: 12,
+                windowDurationMins: 300,
+                resetsAt: 1_790_000_000,
+              },
+              secondary: {
                 usedPercent: 42,
                 windowDurationMins: 10_080,
                 resetsAt: 1_800_000_000,
@@ -27,7 +32,8 @@ describe("parseRateLimitResponse", () => {
             codex_bengalfox: {
               limitId: "codex_bengalfox",
               limitName: "GPT-5.3-Codex-Spark",
-              primary: { usedPercent: 18, windowDurationMins: 10_080 },
+              primary: { usedPercent: 8, windowDurationMins: 300, resetsAt: 1_795_000_000 },
+              secondary: { usedPercent: 18, windowDurationMins: 10_080 },
             },
           },
           rateLimitResetCredits: {
@@ -62,6 +68,18 @@ describe("parseRateLimitResponse", () => {
       usedPercent: 18,
       remainingPercent: 82,
     });
+    expect(result.codexFiveHour).toMatchObject({
+      limitId: "codex",
+      usedPercent: 12,
+      remainingPercent: 88,
+      windowDurationMins: 300,
+    });
+    expect(result.sparkFiveHour).toMatchObject({
+      limitId: "codex_bengalfox",
+      usedPercent: 8,
+      remainingPercent: 92,
+      windowDurationMins: 300,
+    });
     expect(result.resetCredits).toEqual({
       availableCount: 1,
       title: "Full reset",
@@ -69,7 +87,7 @@ describe("parseRateLimitResponse", () => {
     });
   });
 
-  it("does not present a short rolling window as a weekly limit", () => {
+  it("presents an exact five-hour window without treating it as weekly", () => {
     const result = parseRateLimitResponse(
       {
         rateLimits: { limitId: "codex", primary: { usedPercent: 5, windowDurationMins: 300 } },
@@ -77,10 +95,30 @@ describe("parseRateLimitResponse", () => {
       "2026-08-26T12:00:00.000Z",
     );
 
-    expect(result.status).toBe("unavailable");
+    expect(result.status).toBe("available");
     expect(result.codex).toBeNull();
     expect(result.spark).toBeNull();
+    expect(result.codexFiveHour).toMatchObject({
+      usedPercent: 5,
+      remainingPercent: 95,
+      windowDurationMins: 300,
+    });
+    expect(result.sparkFiveHour).toBeNull();
     expect(result.resetCredits).toBeNull();
+  });
+
+  it("does not label another short rolling window as a five-hour limit", () => {
+    const result = parseRateLimitResponse(
+      {
+        rateLimits: { limitId: "codex", primary: { usedPercent: 5, windowDurationMins: 240 } },
+      },
+      "2026-08-26T12:00:00.000Z",
+    );
+
+    expect(result.status).toBe("unavailable");
+    expect(result.codex).toBeNull();
+    expect(result.codexFiveHour).toBeNull();
+    expect(result.sparkFiveHour).toBeNull();
   });
 
   it("keeps the authoritative reset count when detail rows are unavailable", () => {

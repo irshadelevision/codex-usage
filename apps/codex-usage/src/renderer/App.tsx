@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   BreakdownKind,
   CodexRateLimitResetCredits,
-  CodexWeeklyRateLimit,
+  CodexRateLimitWindow,
   ExchangeRateSnapshot,
   MenuBarDisplay,
   RangeSummary,
@@ -205,14 +205,16 @@ function SettingsPopover({
   );
 }
 
-function WeeklyLimitCard({
+function RateLimitCard({
   label,
   limit,
   nowMs,
+  remainingLabel,
 }: {
   readonly label: string;
-  readonly limit: CodexWeeklyRateLimit | null;
+  readonly limit: CodexRateLimitWindow | null;
   readonly nowMs: number;
+  readonly remainingLabel: string;
 }) {
   const usedPercent = limit?.usedPercent ?? 0;
   return (
@@ -220,13 +222,13 @@ function WeeklyLimitCard({
       <div className="rate-limit-copy">
         <span>{label}</span>
         <strong>{limit === null ? "—" : `${limit.remainingPercent}%`}</strong>
-        <small>{limit === null ? "Not reported for this account" : "remaining this week"}</small>
+        <small>{limit === null ? "Not reported for this account" : remainingLabel}</small>
       </div>
       <div className="rate-limit-detail">
         <div
           className="rate-limit-track"
           role="progressbar"
-          aria-label={`${label} weekly usage`}
+          aria-label={`${label} usage`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={usedPercent}
@@ -277,12 +279,14 @@ function ResetCreditCard({
   );
 }
 
-function WeeklyLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
+function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
   const limits = snapshot.rateLimits;
   const [nowMs, setNowMs] = useState(() => Date.now());
   const hasResetTime =
     typeof limits.codex?.resetsAt === "string" ||
     typeof limits.spark?.resetsAt === "string" ||
+    typeof limits.codexFiveHour?.resetsAt === "string" ||
+    typeof limits.sparkFiveHour?.resetsAt === "string" ||
     typeof limits.resetCredits?.expiresAt === "string";
   useEffect(() => {
     if (!hasResetTime) return;
@@ -299,15 +303,51 @@ function WeeklyLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
     <section className="panel rate-limits-panel" aria-labelledby="rate-limits-heading">
       <div className="rate-limits-heading">
         <div>
-          <h2 id="rate-limits-heading">Weekly usage</h2>
-          <p>Separate buckets reported by your signed-in Codex CLI session.</p>
+          <h2 id="rate-limits-heading">Usage limits</h2>
+          <p>Rolling and weekly buckets reported by your signed-in Codex CLI session.</p>
         </div>
         <span>{status}</span>
       </div>
       <div className="rate-limits-grid">
-        <WeeklyLimitCard label="Codex usage" limit={limits.codex} nowMs={nowMs} />
-        <WeeklyLimitCard label="Spark usage" limit={limits.spark} nowMs={nowMs} />
+        <RateLimitCard
+          label="Codex weekly"
+          limit={limits.codex}
+          nowMs={nowMs}
+          remainingLabel="remaining this week"
+        />
+        <RateLimitCard
+          label="Spark weekly"
+          limit={limits.spark}
+          nowMs={nowMs}
+          remainingLabel="remaining this week"
+        />
       </div>
+      {limits.codexFiveHour === null && limits.sparkFiveHour === null ? null : (
+        <>
+          <div className="rate-limit-subheading">
+            <strong>5-hour limits</strong>
+            <span>Only shown when reported by Codex</span>
+          </div>
+          <div className="rate-limits-grid five-hour-limits-grid">
+            {limits.codexFiveHour === null ? null : (
+              <RateLimitCard
+                label="Codex 5-hour"
+                limit={limits.codexFiveHour}
+                nowMs={nowMs}
+                remainingLabel="remaining in this window"
+              />
+            )}
+            {limits.sparkFiveHour === null ? null : (
+              <RateLimitCard
+                label="Spark 5-hour"
+                limit={limits.sparkFiveHour}
+                nowMs={nowMs}
+                remainingLabel="remaining in this window"
+              />
+            )}
+          </div>
+        </>
+      )}
       {limits.resetCredits === null ? null : (
         <ResetCreditCard resetCredits={limits.resetCredits} nowMs={nowMs} />
       )}
@@ -695,7 +735,7 @@ export function App() {
           />
         </section>
 
-        <WeeklyLimits snapshot={snapshot} />
+        <UsageLimits snapshot={snapshot} />
 
         <Totals
           summary={summary}
