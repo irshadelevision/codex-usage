@@ -8,8 +8,14 @@ import {
   usageCurrencyRateNote,
 } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
-import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
+import {
+  formatExpiryDateTime,
+  formatExpiryRemaining,
+  formatResetDateTime,
+  formatResetRemaining,
+} from "../shared/resetTime.ts";
 import type {
+  CodexRateLimitResetCredits,
   CodexWeeklyRateLimit,
   MenuBarDisplay,
   UsageCurrency,
@@ -101,6 +107,33 @@ function LimitRow({
         </span>
         <time dateTime={limit?.resetsAt ?? undefined}>
           {limit === null ? "Reset unavailable" : formatResetDateTime(limit.resetsAt)}
+        </time>
+      </div>
+    </div>
+  );
+}
+
+function ResetCreditRow({
+  resetCredits,
+  nowMs,
+}: {
+  readonly resetCredits: CodexRateLimitResetCredits;
+  readonly nowMs: number;
+}) {
+  const countLabel =
+    resetCredits.availableCount === 1
+      ? "1 reset available"
+      : `${resetCredits.availableCount} resets available`;
+  return (
+    <div className="menu-reset-credit" aria-label="Banked Codex usage reset">
+      <div>
+        <span>Banked reset</span>
+        <strong>{countLabel}</strong>
+      </div>
+      <div>
+        <strong>{formatExpiryRemaining(resetCredits.expiresAt, nowMs)}</strong>
+        <time dateTime={resetCredits.expiresAt ?? undefined}>
+          {formatExpiryDateTime(resetCredits.expiresAt)}
         </time>
       </div>
     </div>
@@ -279,6 +312,9 @@ export function MenuBarView() {
           </div>
           <LimitRow label="Codex" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
           <LimitRow label="Spark" limit={snapshot.rateLimits.spark} nowMs={nowMs} />
+          {snapshot.rateLimits.resetCredits === null ? null : (
+            <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
+          )}
         </section>
 
         <section className="menu-activity-section" aria-labelledby="menu-activity-heading">

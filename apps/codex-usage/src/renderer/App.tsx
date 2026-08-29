@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type {
   BreakdownKind,
+  CodexRateLimitResetCredits,
   CodexWeeklyRateLimit,
   ExchangeRateSnapshot,
   MenuBarDisplay,
@@ -20,7 +21,12 @@ import {
   usageCurrencyRateNote,
 } from "../shared/currency.ts";
 import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
-import { formatResetDateTime, formatResetRemaining } from "../shared/resetTime.ts";
+import {
+  formatExpiryDateTime,
+  formatExpiryRemaining,
+  formatResetDateTime,
+  formatResetRemaining,
+} from "../shared/resetTime.ts";
 import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
@@ -242,11 +248,42 @@ function WeeklyLimitCard({
   );
 }
 
+function ResetCreditCard({
+  resetCredits,
+  nowMs,
+}: {
+  readonly resetCredits: CodexRateLimitResetCredits;
+  readonly nowMs: number;
+}) {
+  const countLabel =
+    resetCredits.availableCount === 1
+      ? "1 reset available"
+      : `${resetCredits.availableCount} resets available`;
+  return (
+    <article className="reset-credit-card" aria-label="Banked Codex usage reset">
+      <div className="reset-credit-copy">
+        <span>Banked usage reset</span>
+        <strong>{countLabel}</strong>
+        <small>{resetCredits.title ?? "Codex rate-limit reset"}</small>
+      </div>
+      <div className="reset-credit-expiry">
+        <strong>{formatExpiryRemaining(resetCredits.expiresAt, nowMs)}</strong>
+        <time dateTime={resetCredits.expiresAt ?? undefined}>
+          {formatExpiryDateTime(resetCredits.expiresAt)}
+        </time>
+        <small>Display only · never used automatically</small>
+      </div>
+    </article>
+  );
+}
+
 function WeeklyLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
   const limits = snapshot.rateLimits;
   const [nowMs, setNowMs] = useState(() => Date.now());
   const hasResetTime =
-    typeof limits.codex?.resetsAt === "string" || typeof limits.spark?.resetsAt === "string";
+    typeof limits.codex?.resetsAt === "string" ||
+    typeof limits.spark?.resetsAt === "string" ||
+    typeof limits.resetCredits?.expiresAt === "string";
   useEffect(() => {
     if (!hasResetTime) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
@@ -271,6 +308,9 @@ function WeeklyLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
         <WeeklyLimitCard label="Codex usage" limit={limits.codex} nowMs={nowMs} />
         <WeeklyLimitCard label="Spark usage" limit={limits.spark} nowMs={nowMs} />
       </div>
+      {limits.resetCredits === null ? null : (
+        <ResetCreditCard resetCredits={limits.resetCredits} nowMs={nowMs} />
+      )}
       {limits.message === null ? null : <p className="rate-limit-message">{limits.message}</p>}
     </section>
   );

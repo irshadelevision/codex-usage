@@ -134,12 +134,19 @@ export interface CodexWeeklyRateLimit {
   readonly windowDurationMins: number | null;
 }
 
+export interface CodexRateLimitResetCredits {
+  readonly availableCount: number;
+  readonly title: string | null;
+  readonly expiresAt: string | null;
+}
+
 export interface CodexRateLimits {
   readonly status: CodexRateLimitStatus;
   readonly readAt: string;
   readonly planType: string | null;
   readonly codex: CodexWeeklyRateLimit | null;
   readonly spark: CodexWeeklyRateLimit | null;
+  readonly resetCredits: CodexRateLimitResetCredits | null;
   readonly message: string | null;
 }
 

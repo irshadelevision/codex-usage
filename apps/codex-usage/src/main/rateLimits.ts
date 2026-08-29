@@ -3,7 +3,11 @@ import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 import * as NodeReadline from "node:readline";
 
-import type { CodexRateLimits, CodexWeeklyRateLimit } from "../shared/types.ts";
+import type {
+  CodexRateLimitResetCredits,
+  CodexRateLimits,
+  CodexWeeklyRateLimit,
+} from "../shared/types.ts";
 
 const WEEK_MINUTES = 7 * 24 * 60;
 const APP_SERVER_TIMEOUT_MS = 15_000;
@@ -26,6 +30,37 @@ function timestampToIso(value: number | null): string | null {
   if (value === null || value < 0) return null;
   const date = new Date(value * 1000);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function parseResetCredits(value: unknown): CodexRateLimitResetCredits | null {
+  const input = object(value);
+  const rawCount = finiteNumber(input?.["availableCount"]);
+  const availableCount = rawCount === null ? 0 : Math.max(0, Math.trunc(rawCount));
+  if (availableCount === 0) return null;
+
+  const details = Array.isArray(input?.["credits"])
+    ? input.credits
+        .flatMap((value) => {
+          const credit = object(value);
+          return credit?.["status"] === "available" ? [credit] : [];
+        })
+        .toSorted(
+          (left, right) =>
+            (finiteNumber(left["expiresAt"]) ?? Number.POSITIVE_INFINITY) -
+            (finiteNumber(right["expiresAt"]) ?? Number.POSITIVE_INFINITY),
+        )
+    : [];
+  const nextCredit = details[0];
+
+  return {
+    availableCount,
+    title: nonEmptyString(nextCredit?.["title"]),
+    expiresAt: timestampToIso(finiteNumber(nextCredit?.["expiresAt"])),
+  };
 }
 
 function parseWindow(value: unknown): RateLimitWindow | null {
@@ -100,6 +135,7 @@ export function parseRateLimitResponse(value: unknown, readAt: string): CodexRat
   const codex = codexBucket === null ? null : toWeeklyLimit("codex", "Codex plan", codexBucket);
   const spark =
     sparkBucket === undefined ? null : toWeeklyLimit("codex-spark", "Codex Spark", sparkBucket);
+  const resetCredits = parseResetCredits(response?.["rateLimitResetCredits"]);
   const planType =
     typeof account?.["planType"] === "string"
       ? account["planType"]
@@ -112,11 +148,12 @@ export function parseRateLimitResponse(value: unknown, readAt: string): CodexRat
             : null;
 
   return {
-    status: codex === null && spark === null ? "unavailable" : "available",
+    status: codex === null && spark === null && resetCredits === null ? "unavailable" : "available",
     readAt,
     planType,
     codex,
     spark,
+    resetCredits,
     message:
       codex === null && spark === null
         ? "The Codex CLI session did not report weekly usage limits."
@@ -263,6 +300,7 @@ export class CodexRateLimitReader {
         planType: null,
         codex: null,
         spark: null,
+        resetCredits: null,
         message: "Codex CLI was not found. Set CODEX_BINARY to its executable path.",
       };
     }
@@ -285,6 +323,7 @@ export class CodexRateLimitReader {
         planType: null,
         codex: null,
         spark: null,
+        resetCredits: null,
         message,
       };
     }

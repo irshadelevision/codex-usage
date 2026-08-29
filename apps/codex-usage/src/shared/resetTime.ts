@@ -58,6 +58,20 @@ export function formatResetDateTime(value: string | null): string {
     : `Resets ${RESET_DATE_TIME.format(resetAtMs)}`;
 }
 
+export function formatExpiryRemaining(value: string | null, nowMs: number): string {
+  const expiresAtMs = resetTimestamp(value);
+  if (expiresAtMs === null) return "Expiration unavailable";
+  if (expiresAtMs <= nowMs) return "Expired";
+  return `Expires in ${remainingParts(value, nowMs)}`;
+}
+
+export function formatExpiryDateTime(value: string | null): string {
+  const expiresAtMs = resetTimestamp(value);
+  return expiresAtMs === null
+    ? "Expiration date unavailable"
+    : `Expires ${RESET_DATE_TIME.format(expiresAtMs)}`;
+}
+
 export function formatMenuBarReset(value: string | null, nowMs: number): string {
   const remaining = formatResetRemainingCompact(value, nowMs);
   const date = formatResetDateCompact(value);

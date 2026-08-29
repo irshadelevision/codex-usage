@@ -30,6 +30,19 @@ describe("parseRateLimitResponse", () => {
               primary: { usedPercent: 18, windowDurationMins: 10_080 },
             },
           },
+          rateLimitResetCredits: {
+            availableCount: 1,
+            credits: [
+              {
+                id: "opaque-credit-id",
+                status: "available",
+                resetType: "codexRateLimits",
+                grantedAt: 1_780_000_000,
+                expiresAt: 1_800_864_000,
+                title: "Full reset",
+              },
+            ],
+          },
         },
       },
       "2026-08-26T12:00:00.000Z",
@@ -49,6 +62,11 @@ describe("parseRateLimitResponse", () => {
       usedPercent: 18,
       remainingPercent: 82,
     });
+    expect(result.resetCredits).toEqual({
+      availableCount: 1,
+      title: "Full reset",
+      expiresAt: "2027-01-25T08:00:00.000Z",
+    });
   });
 
   it("does not present a short rolling window as a weekly limit", () => {
@@ -62,6 +80,48 @@ describe("parseRateLimitResponse", () => {
     expect(result.status).toBe("unavailable");
     expect(result.codex).toBeNull();
     expect(result.spark).toBeNull();
+    expect(result.resetCredits).toBeNull();
+  });
+
+  it("keeps the authoritative reset count when detail rows are unavailable", () => {
+    const result = parseRateLimitResponse(
+      {
+        rateLimitResetCredits: {
+          availableCount: 3,
+          credits: null,
+        },
+      },
+      "2026-08-26T12:00:00.000Z",
+    );
+
+    expect(result.status).toBe("available");
+    expect(result.resetCredits).toEqual({
+      availableCount: 3,
+      title: null,
+      expiresAt: null,
+    });
+  });
+
+  it("uses the nearest available reset expiry and omits unavailable credits", () => {
+    const result = parseRateLimitResponse(
+      {
+        rateLimitResetCredits: {
+          availableCount: 2,
+          credits: [
+            { status: "used", expiresAt: 1_700_000_000, title: "Used reset" },
+            { status: "available", expiresAt: 1_900_000_000, title: "Later reset" },
+            { status: "available", expiresAt: 1_800_000_000, title: "Next reset" },
+          ],
+        },
+      },
+      "2026-08-26T12:00:00.000Z",
+    );
+
+    expect(result.resetCredits).toEqual({
+      availableCount: 2,
+      title: "Next reset",
+      expiresAt: "2027-01-15T08:00:00.000Z",
+    });
   });
 
   it("ignores an invalid reset timestamp without failing the refresh", () => {

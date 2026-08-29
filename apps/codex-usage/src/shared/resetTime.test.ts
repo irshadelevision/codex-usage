@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  formatExpiryDateTime,
+  formatExpiryRemaining,
   formatMenuBarReset,
   formatResetDateCompact,
   formatResetDateTime,
@@ -28,5 +30,13 @@ describe("reset time formatting", () => {
     expect(formatMenuBarReset("not-a-date", nowMs)).toBe("—");
     expect(formatResetRemainingCompact(null, nowMs)).toBe("—");
     expect(formatResetDateCompact(null)).toBe("—");
+    expect(formatExpiryRemaining(null, nowMs)).toBe("Expiration unavailable");
+    expect(formatExpiryDateTime("not-a-date")).toBe("Expiration date unavailable");
+  });
+
+  it("formats banked reset expiration without implying the reset was used", () => {
+    expect(formatExpiryRemaining("2026-08-28T16:30:00.000Z", nowMs)).toBe("Expires in 2d 4h");
+    expect(formatExpiryRemaining("2026-08-26T12:00:00.000Z", nowMs)).toBe("Expired");
+    expect(formatExpiryDateTime("2026-08-28T16:30:00.000Z")).toContain("Expires");
   });
 });
