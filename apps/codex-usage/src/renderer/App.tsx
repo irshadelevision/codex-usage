@@ -216,7 +216,7 @@ function RateLimitCard({
   readonly nowMs: number;
   readonly remainingLabel: string;
 }) {
-  const usedPercent = limit?.usedPercent ?? 0;
+  const remainingPercent = Math.min(100, Math.max(0, limit?.remainingPercent ?? 0));
   return (
     <article className={`rate-limit-card${limit === null ? " unavailable" : ""}`}>
       <div className="rate-limit-copy">
@@ -228,12 +228,12 @@ function RateLimitCard({
         <div
           className="rate-limit-track"
           role="progressbar"
-          aria-label={`${label} usage`}
+          aria-label={`${label} remaining`}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={usedPercent}
+          aria-valuenow={remainingPercent}
         >
-          <i style={{ width: `${usedPercent}%` }} />
+          <i style={{ width: `${remainingPercent}%` }} />
         </div>
         <div className="rate-limit-schedule">
           <span>

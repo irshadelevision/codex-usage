@@ -88,7 +88,7 @@ function LimitRow({
   readonly limit: CodexRateLimitWindow | null;
   readonly nowMs: number;
 }) {
-  const usedPercent = Math.min(100, Math.max(0, limit?.usedPercent ?? 0));
+  const remainingPercent = Math.min(100, Math.max(0, limit?.remainingPercent ?? 0));
   return (
     <div className={`menu-limit-row${limit === null ? " unavailable" : ""}`}>
       <div className="menu-limit-topline">
@@ -97,9 +97,9 @@ function LimitRow({
       </div>
       <progress
         className="menu-limit-track"
-        aria-label={`${label} usage`}
+        aria-label={`${label} remaining`}
         max={100}
-        value={usedPercent}
+        value={remainingPercent}
       />
       <div className="menu-limit-schedule">
         <span>
