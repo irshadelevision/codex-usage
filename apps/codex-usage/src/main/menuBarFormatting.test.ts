@@ -2,6 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { ExchangeRateSnapshot } from "../shared/types.ts";
 import {
+  formatCombinedRateLimitStatus,
+  formatCombinedRateLimitStatusWithCost,
   formatMenuBarCurrency,
   formatRateLimitStatus,
   formatRateLimitStatusWithCost,
@@ -86,6 +88,49 @@ describe("formatRateLimitStatusWithCost", () => {
     expect(formatRateLimitStatusWithCost(null, 42.5, "USD", exchangeRates, nowMs)).toBe(
       "— · $42.50",
     );
+  });
+});
+
+describe("formatCombinedRateLimitStatus", () => {
+  const nowMs = Date.parse("2026-08-26T12:00:00.000Z");
+  const codexLimit = {
+    limitId: "codex",
+    name: "Codex plan",
+    usedPercent: 42,
+    remainingPercent: 58,
+    resetsAt: "2026-08-28T16:30:00.000Z",
+    windowDurationMins: 10_080,
+  };
+  const sparkLimit = {
+    limitId: "spark",
+    name: "Spark plan",
+    usedPercent: 25,
+    remainingPercent: 75,
+    resetsAt: "2026-08-27T16:00:00.000Z",
+    windowDurationMins: 10_080,
+  };
+
+  it("labels both usage buckets and their individual countdowns", () => {
+    expect(formatCombinedRateLimitStatus(codexLimit, sparkLimit, nowMs)).toBe(
+      "C 58% · 2d 4h | S 75% · 1d 4h",
+    );
+  });
+
+  it("keeps missing buckets explicit", () => {
+    expect(formatCombinedRateLimitStatus(codexLimit, null, nowMs)).toBe("C 58% · 2d 4h | S —");
+  });
+
+  it("appends one overall range cost in the selected currency", () => {
+    expect(
+      formatCombinedRateLimitStatusWithCost(
+        codexLimit,
+        sparkLimit,
+        10,
+        "GBP",
+        exchangeRates,
+        nowMs,
+      ),
+    ).toBe("C 58% · 2d 4h | S 75% · 1d 4h | GBP 7.34");
   });
 });
 

@@ -116,3 +116,26 @@ export function formatRateLimitStatusWithCost(
   const cost = formatMenuBarCurrency(costUsd, currency, exchangeRates);
   return `${status} · ${cost}`;
 }
+
+export function formatCombinedRateLimitStatus(
+  codexLimit: CodexRateLimitWindow | null,
+  sparkLimit: CodexRateLimitWindow | null,
+  nowMs: number,
+): string {
+  const codexStatus = formatRateLimitStatus(codexLimit, "usage-time", nowMs);
+  const sparkStatus = formatRateLimitStatus(sparkLimit, "usage-time", nowMs);
+  return `C ${codexStatus} | S ${sparkStatus}`;
+}
+
+export function formatCombinedRateLimitStatusWithCost(
+  codexLimit: CodexRateLimitWindow | null,
+  sparkLimit: CodexRateLimitWindow | null,
+  costUsd: number,
+  currency: UsageCurrency,
+  exchangeRates: ExchangeRateSnapshot,
+  nowMs: number,
+): string {
+  const status = formatCombinedRateLimitStatus(codexLimit, sparkLimit, nowMs);
+  const cost = formatMenuBarCurrency(costUsd, currency, exchangeRates);
+  return `${status} | ${cost}`;
+}

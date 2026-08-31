@@ -77,8 +77,15 @@ export const MENU_BAR_DISPLAYS = [
   "codex-reset",
   "spark-weekly",
   "spark-weekly-time",
+  "spark-weekly-time-cost-7d",
+  "spark-weekly-time-cost-30d",
+  "spark-weekly-time-cost-90d",
   "spark-weekly-date",
   "spark-reset",
+  "codex-spark-weekly-time",
+  "codex-spark-weekly-time-cost-7d",
+  "codex-spark-weekly-time-cost-30d",
+  "codex-spark-weekly-time-cost-90d",
   "icon-only",
 ] as const;
 export type MenuBarDisplay = (typeof MENU_BAR_DISPLAYS)[number];

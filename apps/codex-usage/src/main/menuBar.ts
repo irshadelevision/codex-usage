@@ -8,8 +8,13 @@ import type {
   UsagePreferences,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { menuBarDisplayFixedRange } from "../shared/menuBarOptions.ts";
 import {
+  menuBarDisplayCostLimitSource,
+  menuBarDisplayFixedRange,
+} from "../shared/menuBarOptions.ts";
+import {
+  formatCombinedRateLimitStatus,
+  formatCombinedRateLimitStatusWithCost,
   formatMenuBarCurrency,
   formatRateLimitStatus,
   formatRateLimitStatusWithCost,
@@ -66,6 +71,7 @@ function usesCountdown(display: MenuBarDisplay): boolean {
     menuBarDisplayFixedRange(display) !== null ||
     display === "codex-reset" ||
     display === "spark-weekly-time" ||
+    display === "codex-spark-weekly-time" ||
     display === "spark-reset"
   );
 }
@@ -82,9 +88,32 @@ function formatStatusTitle(
   if (preferences.menuBarDisplay === "icon-only") return "";
   const costRange = menuBarDisplayFixedRange(preferences.menuBarDisplay);
   if (costRange !== null) {
+    const costUsd = snapshot.ranges[costRange].costUsd;
+    const limitSource = menuBarDisplayCostLimitSource(preferences.menuBarDisplay);
+    if (limitSource === "spark") {
+      return formatSparkStatus(
+        formatRateLimitStatusWithCost(
+          snapshot.rateLimits.spark,
+          costUsd,
+          preferences.currency,
+          snapshot.exchangeRates,
+          nowMs,
+        ),
+      );
+    }
+    if (limitSource === "combined") {
+      return formatCombinedRateLimitStatusWithCost(
+        snapshot.rateLimits.codex,
+        snapshot.rateLimits.spark,
+        costUsd,
+        preferences.currency,
+        snapshot.exchangeRates,
+        nowMs,
+      );
+    }
     return formatRateLimitStatusWithCost(
       snapshot.rateLimits.codex,
-      snapshot.ranges[costRange].costUsd,
+      costUsd,
       preferences.currency,
       snapshot.exchangeRates,
       nowMs,
@@ -107,6 +136,13 @@ function formatStatusTitle(
   }
   if (preferences.menuBarDisplay === "spark-weekly-date") {
     return formatSparkStatus(formatRateLimitStatus(snapshot.rateLimits.spark, "usage-date", nowMs));
+  }
+  if (preferences.menuBarDisplay === "codex-spark-weekly-time") {
+    return formatCombinedRateLimitStatus(
+      snapshot.rateLimits.codex,
+      snapshot.rateLimits.spark,
+      nowMs,
+    );
   }
   if (preferences.menuBarDisplay === "codex-reset") {
     return formatRateLimitStatus(snapshot.rateLimits.codex, "time-date", nowMs);
