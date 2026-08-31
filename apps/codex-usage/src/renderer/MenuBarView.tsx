@@ -7,7 +7,11 @@ import {
   USAGE_CURRENCY_LABELS,
   usageCurrencyRateNote,
 } from "../shared/currency.ts";
-import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
+import {
+  MENU_BAR_DISPLAY_LABELS,
+  menuBarDisplayFixedRange,
+  menuBarDisplayUsesRange,
+} from "../shared/menuBarOptions.ts";
 import {
   formatExpiryDateTime,
   formatExpiryRemaining,
@@ -286,6 +290,8 @@ export function MenuBarView() {
 
   const summary = snapshot.ranges[preferences.menuBarRange];
   const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
+  const displayedRange =
+    menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
   const topModel = summary.models[0]?.key ?? "No activity";
   const topMode = summary.modes[0]?.mode ?? undefined;
 
@@ -414,7 +420,7 @@ export function MenuBarView() {
                 <button
                   key={range}
                   type="button"
-                  aria-pressed={preferences.menuBarRange === range}
+                  aria-pressed={displayedRange === range}
                   onClick={() => updatePreferences({ menuBarRange: range })}
                 >
                   {rangeLabel(range)}

@@ -104,3 +104,15 @@ export function formatRateLimitStatus(
   if (suffix === "—") return "—";
   return display === "time-date" ? suffix : `${usage} · ${suffix}`;
 }
+
+export function formatRateLimitStatusWithCost(
+  limit: CodexRateLimitWindow | null,
+  costUsd: number,
+  currency: UsageCurrency,
+  exchangeRates: ExchangeRateSnapshot,
+  nowMs: number,
+): string {
+  const status = formatRateLimitStatus(limit, "usage-time", nowMs);
+  const cost = formatMenuBarCurrency(costUsd, currency, exchangeRates);
+  return `${status} · ${cost}`;
+}

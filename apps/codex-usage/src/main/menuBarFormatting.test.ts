@@ -4,6 +4,7 @@ import type { ExchangeRateSnapshot } from "../shared/types.ts";
 import {
   formatMenuBarCurrency,
   formatRateLimitStatus,
+  formatRateLimitStatusWithCost,
   getMenuBarPopoverHeight,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
@@ -58,6 +59,33 @@ describe("formatRateLimitStatus", () => {
 
   it("uses a compact unavailable marker when the bucket is missing", () => {
     expect(formatRateLimitStatus(null, "usage-time", nowMs)).toBe("—");
+  });
+});
+
+describe("formatRateLimitStatusWithCost", () => {
+  const nowMs = Date.parse("2026-08-26T12:00:00.000Z");
+  const limit = {
+    limitId: "codex",
+    name: "Codex plan",
+    usedPercent: 42,
+    remainingPercent: 58,
+    resetsAt: "2026-08-28T16:30:00.000Z",
+    windowDurationMins: 10_080,
+  };
+
+  it("combines usage, time left, and cost in the selected currency", () => {
+    expect(formatRateLimitStatusWithCost(limit, 10, "USD", exchangeRates, nowMs)).toBe(
+      "58% · 2d 4h · $10.00",
+    );
+    expect(formatRateLimitStatusWithCost(limit, 10, "GBP", exchangeRates, nowMs)).toBe(
+      "58% · 2d 4h · GBP 7.34",
+    );
+  });
+
+  it("keeps the selected range cost visible when the limit is unavailable", () => {
+    expect(formatRateLimitStatusWithCost(null, 42.5, "USD", exchangeRates, nowMs)).toBe(
+      "— · $42.50",
+    );
   });
 });
 

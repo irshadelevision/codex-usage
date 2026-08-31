@@ -20,7 +20,11 @@ import {
   USAGE_CURRENCY_LABELS,
   usageCurrencyRateNote,
 } from "../shared/currency.ts";
-import { MENU_BAR_DISPLAY_LABELS, menuBarDisplayUsesRange } from "../shared/menuBarOptions.ts";
+import {
+  MENU_BAR_DISPLAY_LABELS,
+  menuBarDisplayFixedRange,
+  menuBarDisplayUsesRange,
+} from "../shared/menuBarOptions.ts";
 import {
   formatExpiryDateTime,
   formatExpiryRemaining,
@@ -120,6 +124,8 @@ function SettingsPopover({
   readonly onUpdate: (patch: UsagePreferencesPatch) => void;
 }) {
   const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
+  const displayedRange =
+    menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
   return (
     <div id="usage-settings" className="settings-popover" role="dialog" aria-label="Usage settings">
       <div className="settings-heading">
@@ -169,7 +175,7 @@ function SettingsPopover({
       <label className="settings-select-row">
         <span className={rangeEnabled ? undefined : "disabled-label"}>Displayed range</span>
         <select
-          value={preferences.menuBarRange}
+          value={displayedRange}
           disabled={!rangeEnabled}
           onChange={(event) => onUpdate({ menuBarRange: event.target.value as UsageRange })}
         >

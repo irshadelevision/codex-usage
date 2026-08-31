@@ -8,9 +8,11 @@ import type {
   UsagePreferences,
   UsageSnapshot,
 } from "../shared/types.ts";
+import { menuBarDisplayFixedRange } from "../shared/menuBarOptions.ts";
 import {
   formatMenuBarCurrency,
   formatRateLimitStatus,
+  formatRateLimitStatusWithCost,
   getMenuBarPopoverHeight,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
@@ -61,6 +63,7 @@ function formatRangeDisplay(
 function usesCountdown(display: MenuBarDisplay): boolean {
   return (
     display === "codex-weekly-time" ||
+    menuBarDisplayFixedRange(display) !== null ||
     display === "codex-reset" ||
     display === "spark-weekly-time" ||
     display === "spark-reset"
@@ -77,6 +80,16 @@ function formatStatusTitle(
   nowMs: number,
 ): string {
   if (preferences.menuBarDisplay === "icon-only") return "";
+  const costRange = menuBarDisplayFixedRange(preferences.menuBarDisplay);
+  if (costRange !== null) {
+    return formatRateLimitStatusWithCost(
+      snapshot.rateLimits.codex,
+      snapshot.ranges[costRange].costUsd,
+      preferences.currency,
+      snapshot.exchangeRates,
+      nowMs,
+    );
+  }
   if (preferences.menuBarDisplay === "codex-weekly") {
     return formatRateLimitStatus(snapshot.rateLimits.codex, "usage", nowMs);
   }

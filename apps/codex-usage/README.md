@@ -21,7 +21,8 @@ The app includes:
   last-known-rate fallback;
 - a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
 - a configurable menu-bar value: cost, tokens, sessions, Codex/Spark usage percentage only,
-  percentage plus time left, percentage plus reset date, time left plus reset date, or icon only;
+  percentage plus time left, Codex percentage plus time left plus 7/30/90-day cost, percentage plus
+  reset date, time left plus reset date, or icon only;
 - a native About window with author/version details, an on-demand GitHub release check, and direct
   DMG downloads when an update is available;
 - optional launch at login.
