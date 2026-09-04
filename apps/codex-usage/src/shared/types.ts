@@ -19,7 +19,6 @@ export const LIVE_USAGE_CURRENCIES = [
   "GHS",
   "HUF",
   "IDR",
-  "ILS",
   "INR",
   "JPY",
   "KES",

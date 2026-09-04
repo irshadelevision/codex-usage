@@ -43,8 +43,9 @@ describe("convertUsd", () => {
 describe("currency selection", () => {
   it("places every supported currency in exactly one regional group", () => {
     const grouped = USAGE_CURRENCY_GROUPS.flatMap((group) => group.currencies);
-    expect(grouped).toHaveLength(53);
+    expect(grouped).toHaveLength(52);
     expect(grouped).toHaveLength(new Set(grouped).size);
     expect(new Set(grouped)).toEqual(new Set(USAGE_CURRENCIES));
+    expect(grouped as readonly string[]).not.toContain("ILS");
   });
 });

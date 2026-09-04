@@ -37,7 +37,6 @@ export const CURRENCY_FRACTION_DIGITS: Readonly<Record<UsageCurrency, number>> =
   GHS: 2,
   HUF: 2,
   IDR: 0,
-  ILS: 2,
   INR: 2,
   JPY: 0,
   KES: 2,
@@ -93,7 +92,6 @@ export const USAGE_CURRENCY_LABELS: Readonly<Record<UsageCurrency, string>> = {
   GHS: "GHS — Ghanaian Cedi",
   HUF: "HUF — Hungarian Forint",
   IDR: "IDR — Indonesian Rupiah",
-  ILS: "ILS — Israeli New Shekel",
   INR: "INR — Indian Rupee",
   JPY: "JPY — Japanese Yen",
   KES: "KES — Kenyan Shilling",
@@ -165,7 +163,7 @@ export const USAGE_CURRENCY_GROUPS = [
   { label: "South Asia", currencies: ["BDT", "INR", "LKR", "NPR", "PKR"] },
   {
     label: "Middle East",
-    currencies: ["AED", "BHD", "ILS", "JOD", "KWD", "OMR", "QAR", "SAR"],
+    currencies: ["AED", "BHD", "JOD", "KWD", "OMR", "QAR", "SAR"],
   },
   { label: "Africa", currencies: ["EGP", "GHS", "KES", "MAD", "NGN", "ZAR"] },
 ] as const satisfies readonly {

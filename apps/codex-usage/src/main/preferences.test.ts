@@ -45,4 +45,16 @@ describe("PreferencesStore", () => {
       await NodeFSP.rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("falls back to USD when a removed currency was previously stored", async () => {
+    const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "codex-usage-prefs-"));
+    const path = NodePath.join(directory, "preferences.json");
+    try {
+      await NodeFSP.writeFile(path, JSON.stringify({ currency: "ILS" }), "utf8");
+      const store = new PreferencesStore(path);
+      expect(await store.load()).toMatchObject({ currency: "USD" });
+    } finally {
+      await NodeFSP.rm(directory, { recursive: true, force: true });
+    }
+  });
 });

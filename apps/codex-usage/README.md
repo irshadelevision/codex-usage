@@ -16,7 +16,7 @@ The app includes:
 - LiteLLM pricing with a 24-hour offline cache;
 - USD, AED, SAR, BHD, QAR, OMR, JOD, and HKD display currencies using configured peg rates
   (HKD uses the `7.80` midpoint of its supplied band);
-- 45 live currencies covering the Americas, Europe, Asia-Pacific, South Asia, the Middle East,
+- 44 live currencies covering the Americas, Europe, Asia-Pacific, South Asia, the Middle East,
   and Africa using daily Frankfurter reference rates with a 24-hour local cache and
   last-known-rate fallback;
 - a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
