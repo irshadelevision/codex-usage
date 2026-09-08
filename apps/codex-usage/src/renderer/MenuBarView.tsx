@@ -288,9 +288,9 @@ export function MenuBarView() {
     );
   }
 
-  const summary = snapshot.ranges[preferences.menuBarRange];
-  const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
-  const displayedRange =
+  const summary = snapshot.ranges[preferences.menuBarActivityRange];
+  const statusRangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
+  const displayedStatusRange =
     menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
   const topModel = summary.models[0]?.key ?? "No activity";
   const topMode = summary.modes[0]?.mode ?? undefined;
@@ -339,7 +339,9 @@ export function MenuBarView() {
 
         <section className="menu-activity-section" aria-labelledby="menu-activity-heading">
           <div className="menu-section-heading">
-            <h2 id="menu-activity-heading">{rangeLabel(preferences.menuBarRange)} activity</h2>
+            <h2 id="menu-activity-heading">
+              {rangeLabel(preferences.menuBarActivityRange)} activity
+            </h2>
             <span>{formatCount(summary.records)} responses</span>
           </div>
           <div className="menu-activity-metrics">
@@ -371,9 +373,9 @@ export function MenuBarView() {
         <section className="menu-preferences-section" aria-labelledby="menu-preferences-heading">
           <div className="menu-section-heading menu-preferences-heading">
             <h2 id="menu-preferences-heading">
-              <Settings2Icon size={13} /> Status item
+              <Settings2Icon size={13} /> Menu bar
             </h2>
-            <span>Choose what appears above</span>
+            <span>Activity and status</span>
           </div>
           <label className="menu-display-field">
             <span>Currency</span>
@@ -412,15 +414,31 @@ export function MenuBarView() {
               ))}
             </select>
           </label>
-          <div className={`menu-range-field${rangeEnabled ? "" : " disabled"}`}>
-            <span>Range</span>
-            <fieldset disabled={!rangeEnabled}>
-              <legend className="sr-only">Menu bar range</legend>
+          <div className="menu-range-field">
+            <span>Activity</span>
+            <fieldset>
+              <legend className="sr-only">Dropdown activity range</legend>
               {USAGE_RANGES.map((range) => (
                 <button
                   key={range}
                   type="button"
-                  aria-pressed={displayedRange === range}
+                  aria-pressed={preferences.menuBarActivityRange === range}
+                  onClick={() => updatePreferences({ menuBarActivityRange: range })}
+                >
+                  {rangeLabel(range)}
+                </button>
+              ))}
+            </fieldset>
+          </div>
+          <div className={`menu-range-field${statusRangeEnabled ? "" : " disabled"}`}>
+            <span>Status range</span>
+            <fieldset disabled={!statusRangeEnabled}>
+              <legend className="sr-only">Status item range</legend>
+              {USAGE_RANGES.map((range) => (
+                <button
+                  key={range}
+                  type="button"
+                  aria-pressed={displayedStatusRange === range}
                   onClick={() => updatePreferences({ menuBarRange: range })}
                 >
                   {rangeLabel(range)}

@@ -20,6 +20,8 @@ The app includes:
   and Africa using daily Frankfurter reference rates with a 24-hour local cache and
   last-known-rate fallback;
 - a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
+- an independently configurable dropdown activity range that defaults to 24 hours, with 7-day,
+  30-day, and 90-day options;
 - a configurable menu-bar value: cost, tokens, sessions, Codex/Spark usage percentage only,
   percentage plus time left, individual or combined Codex and Spark percentage plus time left plus
   7/30/90-day cost, percentage plus reset date, time left plus reset date, or icon only;

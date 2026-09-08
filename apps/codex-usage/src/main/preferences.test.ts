@@ -18,6 +18,7 @@ describe("PreferencesStore", () => {
         store.update({ showMenuBarIcon: false }),
         store.update({ launchAtLogin: true }),
         store.update({ currency: "INR" }),
+        store.update({ menuBarActivityRange: "30d" }),
         store.update({ menuBarDisplay: "codex-reset" }),
       ]);
 
@@ -27,6 +28,7 @@ describe("PreferencesStore", () => {
         showMenuBarIcon: false,
         launchAtLogin: true,
         currency: "INR",
+        menuBarActivityRange: "30d",
         menuBarDisplay: "codex-reset",
       });
     } finally {
@@ -38,9 +40,18 @@ describe("PreferencesStore", () => {
     const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "codex-usage-prefs-"));
     const path = NodePath.join(directory, "preferences.json");
     try {
-      await NodeFSP.writeFile(path, JSON.stringify({ showInMenuBar: true }), "utf8");
+      await NodeFSP.writeFile(
+        path,
+        JSON.stringify({ showInMenuBar: true, menuBarRange: "90d" }),
+        "utf8",
+      );
       const store = new PreferencesStore(path);
-      expect(await store.load()).toMatchObject({ showMenuBarIcon: true, currency: "USD" });
+      expect(await store.load()).toMatchObject({
+        showMenuBarIcon: true,
+        currency: "USD",
+        menuBarActivityRange: "24h",
+        menuBarRange: "90d",
+      });
     } finally {
       await NodeFSP.rm(directory, { recursive: true, force: true });
     }

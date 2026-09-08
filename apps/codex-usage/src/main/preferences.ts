@@ -15,6 +15,7 @@ const DEFAULT_PREFERENCES: UsagePreferences = {
   showMenuBarIcon: true,
   launchAtLogin: false,
   currency: "USD",
+  menuBarActivityRange: "24h",
   menuBarRange: "7d",
   menuBarDisplay: "cost",
 };
@@ -48,6 +49,9 @@ function decodePreferences(value: unknown): UsagePreferences {
         ? input["launchAtLogin"]
         : DEFAULT_PREFERENCES.launchAtLogin,
     currency: isCurrency(input["currency"]) ? input["currency"] : DEFAULT_PREFERENCES.currency,
+    menuBarActivityRange: isRange(input["menuBarActivityRange"])
+      ? input["menuBarActivityRange"]
+      : DEFAULT_PREFERENCES.menuBarActivityRange,
     menuBarRange: isRange(input["menuBarRange"])
       ? input["menuBarRange"]
       : DEFAULT_PREFERENCES.menuBarRange,

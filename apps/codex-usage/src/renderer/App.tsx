@@ -123,8 +123,8 @@ function SettingsPopover({
   readonly onOpenAbout: () => void;
   readonly onUpdate: (patch: UsagePreferencesPatch) => void;
 }) {
-  const rangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
-  const displayedRange =
+  const statusRangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
+  const displayedStatusRange =
     menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
   return (
     <div id="usage-settings" className="settings-popover" role="dialog" aria-label="Usage settings">
@@ -173,10 +173,23 @@ function SettingsPopover({
         </select>
       </label>
       <label className="settings-select-row">
-        <span className={rangeEnabled ? undefined : "disabled-label"}>Displayed range</span>
+        <span>Dropdown activity</span>
         <select
-          value={displayedRange}
-          disabled={!rangeEnabled}
+          value={preferences.menuBarActivityRange}
+          onChange={(event) => onUpdate({ menuBarActivityRange: event.target.value as UsageRange })}
+        >
+          {USAGE_RANGES.map((range) => (
+            <option key={range} value={range}>
+              {rangeLabel(range)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="settings-select-row">
+        <span className={statusRangeEnabled ? undefined : "disabled-label"}>Status item range</span>
+        <select
+          value={displayedStatusRange}
+          disabled={!statusRangeEnabled}
           onChange={(event) => onUpdate({ menuBarRange: event.target.value as UsageRange })}
         >
           {USAGE_RANGES.map((range) => (

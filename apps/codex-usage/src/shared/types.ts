@@ -193,6 +193,7 @@ export interface UsagePreferences {
   readonly showMenuBarIcon: boolean;
   readonly launchAtLogin: boolean;
   readonly currency: UsageCurrency;
+  readonly menuBarActivityRange: UsageRange;
   readonly menuBarRange: UsageRange;
   readonly menuBarDisplay: MenuBarDisplay;
 }
