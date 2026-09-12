@@ -1,6 +1,5 @@
 import { ArrowUpRightIcon, InfoIcon, PowerIcon, RefreshCwIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { CustomRangePicker, useCustomUsage } from "./CustomRangePicker.tsx";
 
 import appIconUrl from "../../build/icon.png";
 import {
@@ -206,7 +205,6 @@ function MenuFooter({ onError }: { readonly onError: (message: string) => void }
 
 export function MenuBarView() {
   const [snapshot, setSnapshot] = useState<UsageSnapshot | null>(null);
-  const custom = useCustomUsage(snapshot?.readAt);
   const [preferences, setPreferences] = useState<UsagePreferences | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -290,7 +288,7 @@ export function MenuBarView() {
     );
   }
 
-  const summary = custom.summary ?? snapshot.ranges[preferences.menuBarActivityRange];
+  const summary = snapshot.ranges[preferences.menuBarActivityRange];
   const statusRangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
   const displayedStatusRange =
     menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
@@ -342,16 +340,10 @@ export function MenuBarView() {
         <section className="menu-activity-section" aria-labelledby="menu-activity-heading">
           <div className="menu-section-heading">
             <h2 id="menu-activity-heading">
-              {custom.summary ? "Custom" : rangeLabel(preferences.menuBarActivityRange)} activity
+              {rangeLabel(preferences.menuBarActivityRange)} activity
             </h2>
             <span>{formatCount(summary.records)} responses</span>
           </div>
-          {custom.summary ? (
-            <p>
-              {new Date(custom.summary.since).toLocaleString()} –{" "}
-              {new Date(custom.summary.until).toLocaleString()}
-            </p>
-          ) : null}
           <div className="menu-activity-metrics">
             <div>
               <span>Cost</span>
@@ -430,23 +422,14 @@ export function MenuBarView() {
                 <button
                   key={range}
                   type="button"
-                  aria-pressed={!custom.range && preferences.menuBarActivityRange === range}
-                  onClick={() => {
-                    custom.setRange(null);
-                    updatePreferences({ menuBarActivityRange: range });
-                  }}
+                  aria-pressed={preferences.menuBarActivityRange === range}
+                  onClick={() => updatePreferences({ menuBarActivityRange: range })}
                 >
                   {rangeLabel(range)}
                 </button>
               ))}
             </fieldset>
           </div>
-          <CustomRangePicker
-            onApply={custom.setRange}
-            loading={custom.loading}
-            error={custom.error}
-            active={custom.range !== null}
-          />
           <div className={`menu-range-field${statusRangeEnabled ? "" : " disabled"}`}>
             <span>Status range</span>
             <fieldset disabled={!statusRangeEnabled}>
