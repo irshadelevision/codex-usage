@@ -314,6 +314,11 @@ function installApplicationMenu() {
 }
 
 ipcMain.handle("usage:get-snapshot", () => latestSnapshot ?? refreshUsage());
+ipcMain.handle("usage:custom-summary", async (_event, range) => {
+  const result = await scanner.scan(Date.now(), range);
+  if (!result.customSummary) throw new Error("Choose a custom range.");
+  return result.customSummary;
+});
 ipcMain.handle("usage:refresh", () => refreshUsage(true));
 ipcMain.handle("usage:get-preferences", () => preferences.get());
 ipcMain.handle("usage:update-preferences", (_event, patch: UsagePreferencesPatch) =>
@@ -323,7 +328,10 @@ ipcMain.handle(
   "app:get-info",
   () => ({ name: app.getName(), version: app.getVersion(), author: APP_AUTHOR }) satisfies AppInfo,
 );
-ipcMain.handle("app:check-for-updates", () => checkForUpdates(app.getVersion()));
+ipcMain.handle("app:check-for-updates", () =>
+  // oxlint-disable-next-line t3code/no-global-process-runtime -- This standalone Electron app does not use the Effect host runtime.
+  checkForUpdates(app.getVersion(), fetch, process.arch),
+);
 ipcMain.handle("app:open-main", () => {
   menuBar.hidePopover();
   openWindow();

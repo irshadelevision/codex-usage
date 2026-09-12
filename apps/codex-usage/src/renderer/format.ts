@@ -80,6 +80,9 @@ export function formatMode(value: string): string {
 }
 
 export function formatWindow(summary: RangeSummary): string {
+  if (summary.range === "custom") {
+    return `${new Date(summary.since).toLocaleString()} – ${new Date(summary.until).toLocaleString()}`;
+  }
   if (summary.range === "24h") {
     return `${WINDOW_WITH_TIME.format(new Date(summary.since))} – ${WINDOW_WITH_TIME.format(new Date(summary.until))}`;
   }
@@ -93,9 +96,17 @@ export function rangeLabel(range: UsageRange): string {
   return "90 days";
 }
 
-export function formatPointLabel(key: string, range: UsageRange): string {
-  const date = new Date(range === "24h" ? key : `${key}T12:00:00`);
-  return (range === "24h" ? POINT_HOUR : WINDOW_DAY).format(date);
+export function formatPointLabel(key: string, range: UsageRange | "custom"): string {
+  const hourly = range === "24h" || key.includes("T");
+  const date = new Date(hourly ? key : `${key}T12:00:00`);
+  if (range === "custom")
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      ...(hourly ? ({ hour: "numeric", minute: "2-digit" } as const) : {}),
+    });
+  return (hourly ? POINT_HOUR : WINDOW_DAY).format(date);
 }
 
 export function formatUpdatedAt(value: string): string {

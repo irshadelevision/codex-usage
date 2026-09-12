@@ -206,6 +206,8 @@ export function createSampleApi(): CodexUsageApi {
   const preferenceListeners = new Set<(value: UsagePreferences) => void>();
   return {
     getSnapshot: () => Promise.resolve(snapshot),
+    getCustomSummary: () =>
+      Promise.reject(new Error("Custom history requires the desktop app and local session files.")),
     refresh: () => {
       snapshot = makeSnapshot();
       for (const listener of snapshotListeners) listener(snapshot);
@@ -218,15 +220,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.32", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.33", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.32",
-        latestVersion: "0.1.32",
+        currentVersion: "0.1.33",
+        latestVersion: "0.1.33",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.32",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.33",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.32/Codex.Usage-0.1.32-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.33/Codex.Usage-0.1.33-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

@@ -175,6 +175,48 @@ button:disabled {
   background: transparent;
 }
 
+.custom-range-picker {
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 10px;
+  background: #000;
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.custom-range-picker summary {
+  cursor: pointer;
+}
+.custom-range-picker form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+.custom-range-picker p {
+  width: 100%;
+  color: var(--muted);
+}
+.custom-range-picker label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.custom-range-picker input,
+.custom-range-picker button {
+  color-scheme: dark;
+  color: var(--foreground);
+  background: #080808;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 7px;
+  max-width: 100%;
+  font: inherit;
+}
+.custom-range-picker button:disabled {
+  opacity: 0.5;
+}
+
 .settings-anchor {
   position: relative;
 }

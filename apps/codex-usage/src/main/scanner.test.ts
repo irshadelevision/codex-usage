@@ -178,4 +178,39 @@ describe("aggregateRange", () => {
     expect(summary.since).toBe("2026-08-25T12:37:00.000Z");
     expect(summary.until).toBe("2026-08-26T12:37:00.000Z");
   });
+
+  it("filters exact custom boundaries and includes historical records", () => {
+    const start = "2025-01-01T12:30:00.000Z";
+    const end = "2025-01-01T14:00:00.000Z";
+    const summary = aggregateRange(
+      [-1, 0, 1, 90 * 60_000].map((offset) => record({ timestampMs: Date.parse(start) + offset })),
+      "90d",
+      Date.parse("2026-09-12T12:00:00Z"),
+      "UTC",
+      rates,
+      { start, end },
+    );
+    expect(summary.records).toBe(2);
+    expect(summary.range).toBe("custom");
+    expect(summary.series).toHaveLength(2);
+    expect(summary.series.reduce((sum, point) => sum + point.costUsd, 0)).toBeCloseTo(
+      summary.costUsd,
+    );
+  });
+
+  it("uses daily buckets for two years and respects local day boundaries", () => {
+    const start = "2024-09-12T00:00:00Z";
+    const end = "2026-09-12T00:00:00Z";
+    const summary = aggregateRange(
+      [record({ timestampMs: Date.parse("2025-01-01T22:00:00Z") })],
+      "90d",
+      Date.parse(end),
+      "Asia/Dubai",
+      rates,
+      { start, end },
+    );
+    expect(summary.series.length).toBeLessThanOrEqual(732);
+    expect(summary.series.find((point) => point.key === "2025-01-02")?.costUsd).toBeGreaterThan(0);
+    expect(summary.records).toBe(1);
+  });
 });

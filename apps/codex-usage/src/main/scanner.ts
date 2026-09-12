@@ -12,6 +12,7 @@ import type {
   UsageSnapshot,
 } from "../shared/types.ts";
 import { USAGE_RANGES } from "../shared/types.ts";
+import { validateCustomRange, type CustomRange } from "../shared/customRange.ts";
 import { loadRates, priceTokens, type RateTable } from "./pricing.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -371,7 +372,8 @@ function enumerateDays(since: string, until: string): string[] {
   return days;
 }
 
-function rangeDays(range: Exclude<UsageRange, "24h">): number {
+function rangeDays(range: UsageRange): number {
+  if (range === "24h") return 1;
   if (range === "7d") return 7;
   if (range === "30d") return 30;
   return 90;
@@ -424,23 +426,27 @@ export function aggregateRange(
   nowMs: number,
   timeZone: string,
   rates: RateTable,
+  custom?: CustomRange,
 ): RangeSummary {
   const toDay = makeDayFormatter(timeZone);
   const untilDay = toDay(nowMs);
   const minuteAlignedNow = Math.floor(nowMs / 60_000) * 60_000;
-  const sinceTimeMs = minuteAlignedNow - DAY_MS;
-  const isHourly = range === "24h";
+  const sinceTimeMs = custom ? Date.parse(custom.start) : minuteAlignedNow - DAY_MS;
+  const endTimeMs = custom ? Date.parse(custom.end) : minuteAlignedNow;
+  const isHourly = custom ? endTimeMs - sinceTimeMs <= 2 * DAY_MS : range === "24h";
   const sinceDay = isHourly
     ? toDay(sinceTimeMs)
-    : subtractCalendarDays(untilDay, rangeDays(range) - 1);
-  const until = isHourly ? new Date(minuteAlignedNow).toISOString() : untilDay;
-  const since = isHourly ? new Date(sinceTimeMs).toISOString() : sinceDay;
+    : custom
+      ? toDay(sinceTimeMs)
+      : subtractCalendarDays(untilDay, rangeDays(range) - 1);
+  const until = custom?.end ?? (isHourly ? new Date(minuteAlignedNow).toISOString() : untilDay);
+  const since = custom?.start ?? (isHourly ? new Date(sinceTimeMs).toISOString() : sinceDay);
 
   const pointKeys = isHourly
-    ? Array.from({ length: 24 }, (_, index) =>
+    ? Array.from({ length: Math.ceil((endTimeMs - sinceTimeMs) / HOUR_MS) }, (_, index) =>
         new Date(sinceTimeMs + index * HOUR_MS).toISOString(),
       )
-    : enumerateDays(sinceDay, untilDay);
+    : enumerateDays(sinceDay, custom ? toDay(endTimeMs - 1) : untilDay);
   const points = new Map<string, MutablePoint>(
     pointKeys.map((key) => [key, { costUsd: 0, totalTokens: 0 }]),
   );
@@ -454,9 +460,10 @@ export function aggregateRange(
   let unpricedRecords = 0;
 
   for (const record of records) {
+    if (custom && (record.timestampMs < sinceTimeMs || record.timestampMs >= endTimeMs)) continue;
     let pointKey: string;
     if (isHourly) {
-      if (record.timestampMs < sinceTimeMs || record.timestampMs >= minuteAlignedNow) continue;
+      if (record.timestampMs < sinceTimeMs || record.timestampMs >= endTimeMs) continue;
       const index = Math.floor((record.timestampMs - sinceTimeMs) / HOUR_MS);
       pointKey = new Date(sinceTimeMs + index * HOUR_MS).toISOString();
     } else {
@@ -506,7 +513,7 @@ export function aggregateRange(
   }));
 
   return {
-    range,
+    range: custom ? "custom" : range,
     since,
     until,
     costUsd,
@@ -538,14 +545,31 @@ export class CodexUsageScanner {
     this.#ratesCachePath = input.ratesCachePath;
   }
 
-  async scan(nowMs = Date.now()): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
+  #queue: Promise<unknown> = Promise.resolve();
+
+  scan(
+    nowMs = Date.now(),
+    custom?: CustomRange,
+  ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
+    const checked = custom ? validateCustomRange(custom, nowMs) : undefined;
+    const result = this.#queue.then(() => this.#scan(nowMs, checked));
+    this.#queue = result.catch(() => undefined);
+    return result;
+  }
+
+  async #scan(
+    nowMs: number,
+    custom?: CustomRange,
+  ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
     const startedAt = Date.now();
     if (this.#cache === null) this.#cache = await readScanCache(this.#scanCachePath);
 
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     const untilDay = makeDayFormatter(timeZone)(nowMs);
     const sinceDay = subtractCalendarDays(untilDay, 89);
-    const earliestMs = Date.parse(`${sinceDay}T00:00:00Z`) - MTIME_SLACK_MS;
+    const earliestMs =
+      Math.min(Date.parse(`${sinceDay}T00:00:00Z`), custom ? Date.parse(custom.start) : Infinity) -
+      MTIME_SLACK_MS;
     const [pricing, files] = await Promise.all([
       loadRates(this.#ratesCachePath, nowMs),
       listTranscriptFiles(this.#sessionsPath, earliestMs),
@@ -581,6 +605,7 @@ export class CodexUsageScanner {
 
     for (const path of this.#cache.keys()) {
       if (!livePaths.has(path)) {
+        if ((this.#cache.get(path)?.mtimeMs ?? 0) < earliestMs) continue;
         this.#cache.delete(path);
         cacheChanged = true;
       }
@@ -597,6 +622,9 @@ export class CodexUsageScanner {
     ) as Record<UsageRange, RangeSummary>;
 
     return {
+      ...(custom
+        ? { customSummary: aggregateRange(records, "90d", nowMs, timeZone, pricing.rates, custom) }
+        : {}),
       readAt: new Date(nowMs).toISOString(),
       sourcePath: this.#sessionsPath,
       scannedFiles,

@@ -115,7 +115,7 @@ export interface UsageBreakdownRow {
 }
 
 export interface RangeSummary {
-  readonly range: UsageRange;
+  readonly range: UsageRange | "custom";
   readonly since: string;
   readonly until: string;
   readonly costUsd: number;
@@ -173,6 +173,7 @@ export interface ExchangeRateSnapshot {
 }
 
 export interface UsageSnapshot {
+  readonly customSummary?: RangeSummary;
   readonly readAt: string;
   readonly sourcePath: string;
   readonly scannedFiles: number;
@@ -215,6 +216,9 @@ export interface UpdateCheckResult {
 }
 
 export interface CodexUsageApi {
+  readonly getCustomSummary: (
+    range: import("./customRange.ts").CustomRange,
+  ) => Promise<RangeSummary>;
   readonly getSnapshot: () => Promise<UsageSnapshot>;
   readonly refresh: () => Promise<UsageSnapshot>;
   readonly getPreferences: () => Promise<UsagePreferences>;

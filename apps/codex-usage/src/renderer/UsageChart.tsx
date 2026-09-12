@@ -126,7 +126,7 @@ export function UsageChart({
             viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
             preserveAspectRatio="none"
             role="img"
-            aria-label={`${summary.range === "24h" ? "Hourly" : "Daily"} ${metric} usage`}
+            aria-label={`${summary.series[0]?.key.includes("T") ? "Hourly" : "Daily"} ${metric} usage`}
           >
             {ticks.map((tick) => (
               <line

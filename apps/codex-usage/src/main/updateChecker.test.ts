@@ -124,12 +124,13 @@ describe("checkForUpdates", () => {
 
   it("reports GitHub and invalid response failures", async () => {
     await expect(
-      checkForUpdates("0.1.12", async () => new Response(null, { status: 403 })),
+      checkForUpdates("0.1.12", async () => new Response(null, { status: 403 }), "arm64"),
     ).rejects.toThrow("status 403");
     await expect(
       checkForUpdates(
         "0.1.12",
         async () => new Response(JSON.stringify({ tag_name: "latest" }), { status: 200 }),
+        "arm64",
       ),
     ).rejects.toThrow("invalid latest release");
   });

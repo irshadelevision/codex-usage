@@ -106,7 +106,7 @@ function findDmgDownloadUrl(release: unknown, architecture: string): string | nu
 export async function checkForUpdates(
   currentVersion: string,
   fetchRelease: FetchRelease = fetch,
-  architecture = process.arch,
+  architecture: string,
 ): Promise<UpdateCheckResult> {
   const response = await fetchRelease(LATEST_RELEASE_URL, {
     cache: "no-store",

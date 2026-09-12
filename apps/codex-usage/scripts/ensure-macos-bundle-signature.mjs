@@ -1,8 +1,8 @@
-import { execFile } from "node:child_process";
+import * as NodeChildProcess from "node:child_process";
 import * as NodePath from "node:path";
-import { promisify } from "node:util";
+import * as NodeUtil from "node:util";
 
-const execFileAsync = promisify(execFile);
+const execFileAsync = NodeUtil.promisify(NodeChildProcess.execFile);
 
 export default async function ensureMacosBundleSignature(context) {
   if (context.electronPlatformName !== "darwin") return;

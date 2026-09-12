@@ -1,5 +1,6 @@
 import { CheckIcon, InfoIcon, RefreshCwIcon, SettingsIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { CustomRangePicker, useCustomUsage } from "./CustomRangePicker.tsx";
 
 import type {
   BreakdownKind,
@@ -61,7 +62,7 @@ function SegmentedControl<T extends string>({
 }: {
   readonly label: string;
   readonly options: readonly T[];
-  readonly value: T;
+  readonly value: T | null;
   readonly optionLabel: (option: T) => string;
   readonly onChange: (option: T) => void;
 }) {
@@ -558,6 +559,7 @@ function ErrorView({
 
 export function App() {
   const [snapshot, setSnapshot] = useState<UsageSnapshot | null>(null);
+  const custom = useCustomUsage(snapshot?.readAt);
   const [preferences, setPreferences] = useState<UsagePreferences | null>(null);
   const [range, setRange] = useState<UsageRange>("7d");
   const [metric, setMetric] = useState<UsageMetric>("cost");
@@ -634,7 +636,7 @@ export function App() {
   }
   if (snapshot === null || preferences === null) return <LoadingView />;
 
-  const summary = snapshot.ranges[range];
+  const summary = custom.summary ?? snapshot.ranges[range];
   const primaryValue =
     metric === "cost"
       ? formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)
@@ -664,9 +666,12 @@ export function App() {
           <SegmentedControl
             label="Usage range"
             options={USAGE_RANGES}
-            value={range}
+            value={custom.range ? null : range}
             optionLabel={rangeLabel}
-            onChange={setRange}
+            onChange={(value) => {
+              custom.setRange(null);
+              setRange(value);
+            }}
           />
           <button
             type="button"
@@ -702,6 +707,12 @@ export function App() {
       </header>
 
       <main className="content">
+        <CustomRangePicker
+          onApply={custom.setRange}
+          loading={custom.loading}
+          error={custom.error}
+          active={custom.range !== null}
+        />
         {error === null ? null : (
           <div className="error-banner" role="alert">
             <span>{error}</span>
@@ -737,7 +748,7 @@ export function App() {
           </div>
           <div className="chart-heading">
             <h2>
-              {range === "24h" ? "Hourly" : "Daily"}{" "}
+              {summary.series[0]?.key.includes("T") ? "Hourly" : "Daily"}{" "}
               {metric === "cost" ? "cost" : "processed tokens"}
             </h2>
             <span>
