@@ -324,14 +324,6 @@ export function MenuBarView() {
             />
           )}
           <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
-          {snapshot.rateLimits.sparkFiveHour === null ? null : (
-            <LimitRow
-              label="Spark 5-hour"
-              limit={snapshot.rateLimits.sparkFiveHour}
-              nowMs={nowMs}
-            />
-          )}
-          <LimitRow label="Spark weekly" limit={snapshot.rateLimits.spark} nowMs={nowMs} />
           {snapshot.rateLimits.resetCredits === null ? null : (
             <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
           )}

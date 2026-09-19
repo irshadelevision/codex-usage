@@ -28,6 +28,25 @@ function isMenuBarDisplay(value: unknown): value is MenuBarDisplay {
   return typeof value === "string" && MENU_BAR_DISPLAYS.includes(value as MenuBarDisplay);
 }
 
+const LEGACY_SPARK_DISPLAYS: Readonly<Record<string, MenuBarDisplay>> = {
+  "spark-weekly": "codex-weekly",
+  "spark-weekly-time": "codex-weekly-time",
+  "spark-weekly-time-cost-7d": "codex-weekly-time-cost-7d",
+  "spark-weekly-time-cost-30d": "codex-weekly-time-cost-30d",
+  "spark-weekly-time-cost-90d": "codex-weekly-time-cost-90d",
+  "spark-weekly-date": "codex-weekly-date",
+  "spark-reset": "codex-reset",
+  "codex-spark-weekly-time": "codex-weekly-time",
+  "codex-spark-weekly-time-cost-7d": "codex-weekly-time-cost-7d",
+  "codex-spark-weekly-time-cost-30d": "codex-weekly-time-cost-30d",
+  "codex-spark-weekly-time-cost-90d": "codex-weekly-time-cost-90d",
+};
+
+function decodeMenuBarDisplay(value: unknown): MenuBarDisplay | null {
+  if (isMenuBarDisplay(value)) return value;
+  return typeof value === "string" ? (LEGACY_SPARK_DISPLAYS[value] ?? null) : null;
+}
+
 function isCurrency(value: unknown): value is UsageCurrency {
   return typeof value === "string" && USAGE_CURRENCIES.includes(value as UsageCurrency);
 }
@@ -35,6 +54,7 @@ function isCurrency(value: unknown): value is UsageCurrency {
 function decodePreferences(value: unknown): UsagePreferences {
   if (typeof value !== "object" || value === null) return DEFAULT_PREFERENCES;
   const input = value as Record<string, unknown>;
+  const menuBarDisplay = decodeMenuBarDisplay(input["menuBarDisplay"]);
   return {
     showInMenuBar:
       typeof input["showInMenuBar"] === "boolean"
@@ -55,11 +75,12 @@ function decodePreferences(value: unknown): UsagePreferences {
     menuBarRange: isRange(input["menuBarRange"])
       ? input["menuBarRange"]
       : DEFAULT_PREFERENCES.menuBarRange,
-    menuBarDisplay: isMenuBarDisplay(input["menuBarDisplay"])
-      ? input["menuBarDisplay"]
-      : input["menuBarMetric"] === "tokens"
-        ? "tokens"
-        : DEFAULT_PREFERENCES.menuBarDisplay,
+    menuBarDisplay:
+      menuBarDisplay !== null
+        ? menuBarDisplay
+        : input["menuBarMetric"] === "tokens"
+          ? "tokens"
+          : DEFAULT_PREFERENCES.menuBarDisplay,
   };
 }
 

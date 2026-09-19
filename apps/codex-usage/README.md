@@ -9,8 +9,8 @@ The app includes:
 - hourly and daily cost/token graphs;
 - processed, cached, uncached, output, and reasoning token totals;
 - model breakdowns and model-by-reasoning-mode breakdowns;
-- live Codex and Spark weekly usage, plus conditional 5-hour windows when the signed-in Codex CLI
-  session reports them;
+- live Codex weekly usage, plus the conditional 5-hour window when the signed-in Codex CLI
+  session reports it;
 - percentage remaining, reset countdowns, and reset dates for every reported usage window;
 - de-duplication for repeated token events and copied fork/subagent history;
 - LiteLLM pricing with a 24-hour offline cache;
@@ -22,12 +22,12 @@ The app includes:
 - a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
 - an independently configurable dropdown activity range that defaults to 24 hours, with 7-day,
   30-day, and 90-day options;
-- custom start/end dates and times in the dashboard and menu-bar activity, covering the last two
+- custom start/end dates and times in the dashboard, covering the last two
   years of available local sessions; ranges up to two days use hourly graphs, longer ranges use
   daily graphs. Times are local, the end is exclusive, and choosing a preset exits custom mode;
-- a configurable menu-bar value: cost, tokens, sessions, Codex/Spark usage percentage only,
-  percentage plus time left, individual or combined Codex and Spark percentage plus time left plus
-  7/30/90-day cost, percentage plus reset date, time left plus reset date, or icon only;
+- a configurable menu-bar value: cost, tokens, sessions, Codex usage percentage only, percentage
+  plus time left, percentage plus time left and 7/30/90-day cost, percentage plus reset date, time
+  left plus reset date, or icon only;
 - a native About window with author/version details, an on-demand GitHub release check, and direct
   DMG downloads when an update is available;
 - optional launch at login.

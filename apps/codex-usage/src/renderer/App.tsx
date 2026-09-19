@@ -304,9 +304,7 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const hasResetTime =
     typeof limits.codex?.resetsAt === "string" ||
-    typeof limits.spark?.resetsAt === "string" ||
     typeof limits.codexFiveHour?.resetsAt === "string" ||
-    typeof limits.sparkFiveHour?.resetsAt === "string" ||
     typeof limits.resetCredits?.expiresAt === "string";
   useEffect(() => {
     if (!hasResetTime) return;
@@ -344,25 +342,6 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
           <RateLimitCard
             label="Codex weekly"
             limit={limits.codex}
-            nowMs={nowMs}
-            remainingLabel="remaining this week"
-          />
-        </div>
-        <div
-          className={`rate-limit-family${limits.sparkFiveHour === null ? "" : " has-five-hour"}`}
-          aria-label="Spark limits"
-        >
-          {limits.sparkFiveHour === null ? null : (
-            <RateLimitCard
-              label="Spark 5-hour"
-              limit={limits.sparkFiveHour}
-              nowMs={nowMs}
-              remainingLabel="remaining in this window"
-            />
-          )}
-          <RateLimitCard
-            label="Spark weekly"
-            limit={limits.spark}
             nowMs={nowMs}
             remainingLabel="remaining this week"
           />
