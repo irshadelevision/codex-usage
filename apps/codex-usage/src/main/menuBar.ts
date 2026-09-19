@@ -18,7 +18,7 @@ import {
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
 
-export const MENU_BAR_POPOVER_HEIGHT = 900;
+export const MENU_BAR_POPOVER_HEIGHT = 800;
 
 const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
   notation: "compact",
