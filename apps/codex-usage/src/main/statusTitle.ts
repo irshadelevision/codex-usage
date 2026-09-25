@@ -66,7 +66,10 @@ export function formatStatusTitle(
     ? snapshot.claudeRateLimits.fiveHour
     : snapshot.claudeRateLimits.weekly;
   const codex = `${formatRateLimitStatus(codexLimit, format, nowMs)}${snapshot.rateLimits.status === "stale" ? "*" : ""}`;
-  const claude = `${formatRateLimitStatus(claudeLimit, format, nowMs)}${snapshot.claudeRateLimits.status === "stale" ? "*" : ""}`;
+  const claudeStale = snapshot.claudeRateLimits.status === "stale" ? "*" : "";
+  const claude = display.startsWith("claude-limits")
+    ? `5h ${formatRateLimitStatus(snapshot.claudeRateLimits.fiveHour, format, nowMs)}${claudeStale} | 7d ${formatRateLimitStatus(snapshot.claudeRateLimits.weekly, format, nowMs)}${claudeStale}`
+    : `${formatRateLimitStatus(claudeLimit, format, nowMs)}${claudeStale}`;
   const status =
     provider === "all"
       ? `Codex ${codex} | Claude ${claude}`

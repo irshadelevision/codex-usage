@@ -29,6 +29,8 @@ The app includes:
 - a configurable menu-bar value: cost, tokens, sessions, Codex/Claude/Both usage percentage only, percentage
   plus time left, percentage plus time left and 7/30/90-day cost, percentage plus reset date, time
   left plus reset date, or icon only;
+- **Claude 5-hour + weekly** status-item options to show both quota windows at once, each with
+  its own percentage and reset time/date, optionally followed by 7/30/90-day Claude cost;
 - a native About window with author/version details, an on-demand GitHub release check, and direct
   DMG downloads when an update is available;
 - optional launch at login.

@@ -51,6 +51,11 @@ describe("rendered provider limits", () => {
       expect(html.includes('id="menu-limits-heading"')).toBe(provider !== "claude");
       expect(html.includes('id="menu-claude-limits-heading"')).toBe(provider !== "codex");
       expect(html).toContain('value="claude-five-hour-time"');
+      expect(html).toContain('value="claude-limits-time"');
+      if (provider !== "codex") {
+        expect(html).toContain('aria-label="Claude 5-hour remaining"');
+        expect(html).toContain('aria-label="Claude weekly remaining"');
+      }
       expect(html).toContain('value="both-weekly-time"');
       expect(html).toContain('class="menu-bar-content"');
       expect(html).toContain('</section></div><footer class="menu-bar-footer">');

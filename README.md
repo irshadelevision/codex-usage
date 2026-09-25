@@ -21,6 +21,9 @@ token cost, and displays account limits from your signed-in Codex CLI and Claude
   Both / Codex / Claude switcher for activity and limits. Both shows separate provider totals.
 - Configurable menu-bar text for usage, remaining time, reset date, fixed-range cost combinations,
   cost, tokens, or sessions, plus an option to hide the icon when text is shown.
+- Show Claude's 5-hour and weekly limits together in the status item. Choose a
+  **Claude 5-hour + weekly** option under **Menu bar → Displayed value** for percentages,
+  separate reset countdowns/dates, or a 7-, 30-, or 90-day Claude cost alongside both limits.
 - USD and common international currencies, using fixed peg rates where appropriate and daily
   Frankfurter reference rates for supported floating currencies.
 - A native About window with the author, app version, GitHub update check, and latest-DMG download.
