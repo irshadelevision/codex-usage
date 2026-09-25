@@ -17,7 +17,8 @@ token cost, and displays the account limits reported by the signed-in Codex CLI 
   report that bucket for the account.
 - A display-only banked-reset indicator with its expiry when reset credits are reported. The app
   never consumes a reset.
-- A true-black macOS dashboard and modern menu-bar popover.
+- A true-black macOS dashboard and modern menu-bar popover with a prominent
+  Both / Codex / Claude activity switcher. Both shows separate provider totals.
 - Configurable menu-bar text for usage, remaining time, reset date, fixed-range cost combinations,
   cost, tokens, or sessions, plus an option to hide the icon when text is shown.
 - USD and common international currencies, using fixed peg rates where appropriate and daily

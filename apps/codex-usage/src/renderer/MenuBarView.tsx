@@ -1,6 +1,5 @@
 import { ArrowUpRightIcon, InfoIcon, PowerIcon, RefreshCwIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ProviderSelect } from "./ProviderSelect.tsx";
 import { usageRanges } from "../shared/providers.ts";
 
 import appIconUrl from "../../build/icon.png";
@@ -27,9 +26,11 @@ import type {
   UsageCurrency,
   UsagePreferences,
   UsagePreferencesPatch,
+  UsageProvider,
+  RangeSummary,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { MENU_BAR_DISPLAYS, USAGE_RANGES } from "../shared/types.ts";
+import { MENU_BAR_DISPLAYS, USAGE_PROVIDERS, USAGE_RANGES } from "../shared/types.ts";
 import {
   formatCount,
   formatCurrency,
@@ -49,6 +50,21 @@ function planLabel(snapshot: UsageSnapshot): string {
   if (status === "stale") return "Last known";
   if (planType === null) return "Codex plan";
   return `${planType.replaceAll("_", " ")} plan`;
+}
+
+const MENU_PROVIDER_LABELS: Record<UsageProvider, string> = {
+  all: "Both",
+  codex: "Codex",
+  claude: "Claude",
+};
+
+function activityCost(
+  summary: RangeSummary,
+  currency: UsageCurrency,
+  exchangeRates: UsageSnapshot["exchangeRates"],
+): string {
+  if (summary.records > 0 && summary.unpricedRecords === summary.records) return "Unavailable";
+  return `${summary.unpricedRecords > 0 ? "≥ " : ""}${formatCurrency(summary.costUsd, currency, exchangeRates)}`;
 }
 
 function MenuToggle({
@@ -290,9 +306,10 @@ export function MenuBarView() {
     );
   }
 
-  const summary = usageRanges(snapshot, preferences.usageProvider)[
-    preferences.menuBarActivityRange
-  ];
+  const activityRange = preferences.menuBarActivityRange;
+  const summary = usageRanges(snapshot, preferences.usageProvider)[activityRange];
+  const codexSummary = snapshot.providerRanges.codex[activityRange];
+  const claudeSummary = snapshot.providerRanges.claude[activityRange];
   const statusRangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
   const displayedStatusRange =
     menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
@@ -315,43 +332,29 @@ export function MenuBarView() {
           </button>
         )}
 
-        <section className="menu-weekly-section" aria-labelledby="menu-limits-heading">
-          <div className="menu-section-heading">
-            <h2 id="menu-limits-heading">Codex limits</h2>
-            <span>{planLabel(snapshot)}</span>
-          </div>
-          {snapshot.rateLimits.codexFiveHour === null ? null : (
-            <LimitRow
-              label="Codex 5-hour"
-              limit={snapshot.rateLimits.codexFiveHour}
-              nowMs={nowMs}
-            />
-          )}
-          <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
-          {snapshot.rateLimits.resetCredits === null ? null : (
-            <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
-          )}
-        </section>
+        <fieldset className="menu-provider-switcher">
+          <legend className="sr-only">Activity provider</legend>
+          {USAGE_PROVIDERS.map((provider) => (
+            <button
+              key={provider}
+              type="button"
+              aria-pressed={preferences.usageProvider === provider}
+              onClick={() => updatePreferences({ usageProvider: provider })}
+            >
+              {MENU_PROVIDER_LABELS[provider]}
+            </button>
+          ))}
+        </fieldset>
 
         <section className="menu-activity-section" aria-labelledby="menu-activity-heading">
-          <ProviderSelect
-            value={preferences.usageProvider}
-            onChange={(usageProvider) => updatePreferences({ usageProvider })}
-          />
           <div className="menu-section-heading">
-            <h2 id="menu-activity-heading">
-              {rangeLabel(preferences.menuBarActivityRange)} activity
-            </h2>
+            <h2 id="menu-activity-heading">{rangeLabel(activityRange)} activity</h2>
             <span>{formatCount(summary.records)} responses</span>
           </div>
           <div className="menu-activity-metrics">
             <div>
               <span>{summary.unpricedRecords > 0 ? "Cost (partial)" : "API estimate"}</span>
-              <strong>
-                {summary.records > 0 && summary.unpricedRecords === summary.records
-                  ? "Unavailable"
-                  : formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)}
-              </strong>
+              <strong>{activityCost(summary, preferences.currency, snapshot.exchangeRates)}</strong>
             </div>
             <div>
               <span>Tokens</span>
@@ -370,7 +373,58 @@ export function MenuBarView() {
               Mode <strong>{topMode === undefined ? "No activity" : formatMode(topMode)}</strong>
             </span>
           </div>
+          {preferences.usageProvider === "all" ? (
+            <div className="menu-provider-breakdown" aria-label="Activity by provider">
+              {(
+                [
+                  ["Codex", codexSummary],
+                  ["Claude", claudeSummary],
+                ] as const
+              ).map(([label, source]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <span>
+                    {formatCount(source.records)} responses · {formatTokens(source.totalTokens)}{" "}
+                    tokens
+                  </span>
+                  <strong>
+                    {activityCost(source, preferences.currency, snapshot.exchangeRates)}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {preferences.usageProvider !== "codex" && claudeSummary.records === 0 ? (
+            <p className="menu-activity-note">
+              No Claude Code activity in this range. Local source:{" "}
+              {snapshot.claudeSourcePath ?? "~/.claude/projects"}.
+            </p>
+          ) : null}
         </section>
+
+        {preferences.usageProvider === "claude" ? (
+          <p className="menu-limits-note">
+            Claude plan limits are not reported in local session files.
+          </p>
+        ) : (
+          <section className="menu-weekly-section" aria-labelledby="menu-limits-heading">
+            <div className="menu-section-heading">
+              <h2 id="menu-limits-heading">Codex limits</h2>
+              <span>{planLabel(snapshot)}</span>
+            </div>
+            {snapshot.rateLimits.codexFiveHour === null ? null : (
+              <LimitRow
+                label="Codex 5-hour"
+                limit={snapshot.rateLimits.codexFiveHour}
+                nowMs={nowMs}
+              />
+            )}
+            <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
+            {snapshot.rateLimits.resetCredits === null ? null : (
+              <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
+            )}
+          </section>
+        )}
 
         <section className="menu-preferences-section" aria-labelledby="menu-preferences-heading">
           <div className="menu-section-heading menu-preferences-heading">

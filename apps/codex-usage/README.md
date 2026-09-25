@@ -20,7 +20,8 @@ The app includes:
 - 44 live currencies covering the Americas, Europe, Asia-Pacific, South Asia, the Middle East,
   and Africa using daily Frankfurter reference rates with a 24-hour local cache and
   last-known-rate fallback;
-- a macOS menu-bar item with a modern true-black usage popover and an independently hideable icon;
+- a macOS menu-bar item with a modern true-black usage popover, a visible
+  Both / Codex / Claude activity switcher, and an independently hideable icon;
 - an independently configurable dropdown activity range that defaults to 24 hours, with 7-day,
   30-day, and 90-day options;
 - custom start/end dates and times in the dashboard, covering the last two

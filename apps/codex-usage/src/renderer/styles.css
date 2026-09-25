@@ -1174,11 +1174,6 @@ html.menu-bar-document #root {
   font: inherit;
   font-size: 11px;
 }
-.menu-activity-section > .provider-select {
-  width: 100%;
-  margin-bottom: 3px;
-}
-
 .menu-bar-surface {
   display: flex;
   width: 100%;
@@ -1222,6 +1217,34 @@ html.menu-bar-document #root {
   margin: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.menu-provider-switcher {
+  display: grid;
+  width: calc(100% - 26px);
+  min-width: 0;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  margin: 8px 13px 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 3px;
+  background: #080808;
+}
+
+.menu-provider-switcher button {
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.menu-provider-switcher button[aria-pressed="true"] {
+  background: rgb(255 255 255 / 13%);
+  color: var(--foreground);
 }
 
 .menu-bar-header h1 {
@@ -1496,6 +1519,50 @@ html.menu-bar-document #root {
 .menu-activity-context strong {
   color: #b9b9b9;
   font-weight: 520;
+}
+
+.menu-provider-breakdown {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 3px;
+}
+
+.menu-provider-breakdown > div {
+  display: grid;
+  min-height: 22px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--quiet);
+  font-size: 8px;
+}
+
+.menu-provider-breakdown > div > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-provider-breakdown strong {
+  color: var(--foreground);
+  font-weight: 540;
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-activity-note,
+.menu-limits-note {
+  margin: 7px 0 2px;
+  color: var(--quiet);
+  font-size: 9px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.menu-limits-note {
+  flex: 0 0 auto;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 13px;
 }
 
 .menu-preferences-section {

@@ -62,7 +62,7 @@ export type UsageCurrency = (typeof USAGE_CURRENCIES)[number];
 
 export type UsageMetric = "cost" | "tokens";
 export type BreakdownKind = "models" | "modes";
-export const USAGE_PROVIDERS = ["codex", "claude", "all"] as const;
+export const USAGE_PROVIDERS = ["all", "codex", "claude"] as const;
 export type UsageProvider = (typeof USAGE_PROVIDERS)[number];
 
 export const MENU_BAR_DISPLAYS = [

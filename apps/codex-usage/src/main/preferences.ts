@@ -17,7 +17,7 @@ import {
 } from "../shared/types.ts";
 
 const DEFAULT_PREFERENCES: UsagePreferences = {
-  usageProvider: "codex",
+  usageProvider: "all",
   showInMenuBar: true,
   showMenuBarIcon: true,
   launchAtLogin: false,
@@ -65,7 +65,7 @@ function decodePreferences(value: unknown): UsagePreferences {
   return {
     usageProvider: USAGE_PROVIDERS.includes(input["usageProvider"] as UsageProvider)
       ? (input["usageProvider"] as UsageProvider)
-      : "codex",
+      : "all",
     showInMenuBar:
       typeof input["showInMenuBar"] === "boolean"
         ? input["showInMenuBar"]

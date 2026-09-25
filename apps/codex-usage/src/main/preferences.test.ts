@@ -50,7 +50,7 @@ describe("PreferencesStore", () => {
       const store = new PreferencesStore(path);
       expect(await store.load()).toMatchObject({
         showMenuBarIcon: true,
-        usageProvider: "codex",
+        usageProvider: "all",
         currency: "USD",
         menuBarActivityRange: "24h",
         menuBarRange: "90d",
