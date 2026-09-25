@@ -1,5 +1,7 @@
 import { ArrowUpRightIcon, InfoIcon, PowerIcon, RefreshCwIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ProviderSelect } from "./ProviderSelect.tsx";
+import { usageRanges } from "../shared/providers.ts";
 
 import appIconUrl from "../../build/icon.png";
 import {
@@ -275,7 +277,7 @@ export function MenuBarView() {
           <section className="menu-bar-empty" aria-live="polite">
             <span />
             <h2>{error === null ? "Reading your usage" : "Usage could not be read"}</h2>
-            <p>{error ?? "Scanning local Codex sessions and account limits…"}</p>
+            <p>{error ?? "Scanning local sessions and Codex account limits…"}</p>
             {error === null ? null : (
               <button type="button" onClick={refresh}>
                 Try again
@@ -288,7 +290,9 @@ export function MenuBarView() {
     );
   }
 
-  const summary = snapshot.ranges[preferences.menuBarActivityRange];
+  const summary = usageRanges(snapshot, preferences.usageProvider)[
+    preferences.menuBarActivityRange
+  ];
   const statusRangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
   const displayedStatusRange =
     menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
@@ -313,7 +317,7 @@ export function MenuBarView() {
 
         <section className="menu-weekly-section" aria-labelledby="menu-limits-heading">
           <div className="menu-section-heading">
-            <h2 id="menu-limits-heading">Usage limits</h2>
+            <h2 id="menu-limits-heading">Codex limits</h2>
             <span>{planLabel(snapshot)}</span>
           </div>
           {snapshot.rateLimits.codexFiveHour === null ? null : (
@@ -330,6 +334,10 @@ export function MenuBarView() {
         </section>
 
         <section className="menu-activity-section" aria-labelledby="menu-activity-heading">
+          <ProviderSelect
+            value={preferences.usageProvider}
+            onChange={(usageProvider) => updatePreferences({ usageProvider })}
+          />
           <div className="menu-section-heading">
             <h2 id="menu-activity-heading">
               {rangeLabel(preferences.menuBarActivityRange)} activity
@@ -338,9 +346,11 @@ export function MenuBarView() {
           </div>
           <div className="menu-activity-metrics">
             <div>
-              <span>Cost</span>
+              <span>{summary.unpricedRecords > 0 ? "Cost (partial)" : "API estimate"}</span>
               <strong>
-                {formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)}
+                {summary.records > 0 && summary.unpricedRecords === summary.records
+                  ? "Unavailable"
+                  : formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)}
               </strong>
             </div>
             <div>

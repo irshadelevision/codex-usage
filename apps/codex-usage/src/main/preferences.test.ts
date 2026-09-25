@@ -18,6 +18,7 @@ describe("PreferencesStore", () => {
         store.update({ showMenuBarIcon: false }),
         store.update({ launchAtLogin: true }),
         store.update({ currency: "INR" }),
+        store.update({ usageProvider: "claude" }),
         store.update({ menuBarActivityRange: "30d" }),
         store.update({ menuBarDisplay: "codex-reset" }),
       ]);
@@ -28,6 +29,7 @@ describe("PreferencesStore", () => {
         showMenuBarIcon: false,
         launchAtLogin: true,
         currency: "INR",
+        usageProvider: "claude",
         menuBarActivityRange: "30d",
         menuBarDisplay: "codex-reset",
       });
@@ -48,6 +50,7 @@ describe("PreferencesStore", () => {
       const store = new PreferencesStore(path);
       expect(await store.load()).toMatchObject({
         showMenuBarIcon: true,
+        usageProvider: "codex",
         currency: "USD",
         menuBarActivityRange: "24h",
         menuBarRange: "90d",

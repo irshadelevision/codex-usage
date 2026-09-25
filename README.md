@@ -1,17 +1,19 @@
 # Codex Usage
 
 Codex Usage is a local-first macOS menu-bar app and dashboard for understanding activity recorded
-by the Codex CLI and Codex desktop app. It reads local Codex sessions, estimates API-equivalent
+by Codex and Claude Code. It reads local session files, estimates API-equivalent
 token cost, and displays the account limits reported by the signed-in Codex CLI session.
 
 ## Features
 
 - Rolling 24-hour, 7-day, 30-day, and 90-day activity views.
+- Codex, Claude Code, or combined activity in the dashboard and menu bar; custom dashboard
+  ranges cover up to two years of available local history.
 - Hourly and daily cost/token graphs.
 - Processed, cached, uncached, output, and reasoning token totals.
 - Model, mode, and model-by-reasoning-mode breakdowns.
-- Codex and Spark weekly usage with percentage remaining, reset countdowns, and reset dates.
-- Conditional Codex and Spark 5-hour usage limits; a 5-hour row is hidden when the CLI does not
+- Codex weekly usage with percentage remaining, reset countdowns, and reset dates.
+- Conditional Codex 5-hour usage limits; a 5-hour row is hidden when the CLI does not
   report that bucket for the account.
 - A display-only banked-reset indicator with its expiry when reset credits are reported. The app
   never consumes a reset.
@@ -25,16 +27,22 @@ token cost, and displays the account limits reported by the signed-in Codex CLI 
 
 Session, token, and cost data stay on the Mac. Subscription billing is separate from the
 API-equivalent estimate displayed by the app.
+The provider selector applies to activity, graphs, breakdowns, and menu-bar costs/tokens/sessions.
+Subscription-limit percentages and reset information remain Codex-only: Claude's local transcripts
+do not report subscription quotas. Claude desktop chat history is not scanned.
 
 ## Requirements
 
 - macOS.
-- [Codex CLI](https://developers.openai.com/codex/cli) installed and authenticated with
-  `codex login`.
-- Existing Codex activity in `~/.codex/sessions` for local activity charts.
+- Existing Codex activity in `~/.codex/sessions` and/or Claude Code activity in
+  `~/.claude/projects` for local activity charts.
+- For live Codex account limits, [Codex CLI](https://developers.openai.com/codex/cli)
+  installed and authenticated with `codex login`.
 
 If Codex uses a different data directory, launch with `CODEX_HOME` set to that directory. If the
 CLI is installed in a custom location, set `CODEX_BINARY` to the executable's absolute path.
+For an alternate Claude Code configuration directory, set `CLAUDE_CONFIG_DIR`; the scanner reads
+its `projects` folder, including subagent transcripts. No Claude API key is required.
 
 ## Install
 
@@ -72,9 +80,21 @@ Release artifacts are written to `apps/codex-usage/release`.
 
 ## Data sources
 
-- Local activity: Codex session JSONL files under the Codex home directory.
+- Local activity: Codex session JSONL files and Claude Code project JSONL files.
 - Account limits: the local Codex CLI app-server session.
 - Token pricing: LiteLLM pricing data with a local cache.
 - Floating exchange rates: Frankfurter reference rates with a local cache and last-known fallback.
 
 The app does not require an exchange-rate API key.
+
+### Understanding cost estimates
+
+Prices use the current published standard token rates, not historical subscription billing.
+Provider-qualified rates cannot overwrite direct model prices. Unknown or ambiguous models keep
+their token counts, but their costs are excluded and clearly marked unavailable/partial.
+Long-context tiers, negotiated discounts, and service tiers may differ from these estimates.
+
+Claude input, cache reads, and cache writes are counted separately. One-hour cache writes and
+fast-mode multipliers are applied when reported and published. A recorded `costUSD` takes
+precedence when available. Repeated Claude message/request pairs are counted once across files;
+synthetic error responses are ignored. Missing Claude reasoning metadata is shown as unknown.

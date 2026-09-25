@@ -62,6 +62,8 @@ export type UsageCurrency = (typeof USAGE_CURRENCIES)[number];
 
 export type UsageMetric = "cost" | "tokens";
 export type BreakdownKind = "models" | "modes";
+export const USAGE_PROVIDERS = ["codex", "claude", "all"] as const;
+export type UsageProvider = (typeof USAGE_PROVIDERS)[number];
 
 export const MENU_BAR_DISPLAYS = [
   "cost",
@@ -82,6 +84,7 @@ export interface TokenTotals {
   readonly uncachedInputTokens: number;
   readonly cachedInputTokens: number;
   readonly cacheCreationTokens: number;
+  readonly cacheCreationOneHourTokens?: number;
   readonly outputTokens: number;
   readonly reasoningTokens: number;
 }
@@ -93,6 +96,8 @@ export interface UsagePoint {
 }
 
 export interface UsageBreakdownRow {
+  readonly unpricedRecords?: number;
+  readonly pricedRecords?: number;
   readonly key: string;
   readonly model: string;
   readonly mode: string | null;
@@ -162,6 +167,10 @@ export interface ExchangeRateSnapshot {
 }
 
 export interface UsageSnapshot {
+  readonly providerRanges: Readonly<
+    Record<"codex" | "claude", Readonly<Record<UsageRange, RangeSummary>>>
+  >;
+  readonly claudeSourcePath?: string;
   readonly customSummary?: RangeSummary;
   readonly readAt: string;
   readonly sourcePath: string;
@@ -179,6 +188,7 @@ export interface UsageSnapshot {
 }
 
 export interface UsagePreferences {
+  readonly usageProvider: UsageProvider;
   readonly showInMenuBar: boolean;
   readonly showMenuBarIcon: boolean;
   readonly launchAtLogin: boolean;
@@ -207,6 +217,7 @@ export interface UpdateCheckResult {
 export interface CodexUsageApi {
   readonly getCustomSummary: (
     range: import("./customRange.ts").CustomRange,
+    provider?: UsageProvider,
   ) => Promise<RangeSummary>;
   readonly getSnapshot: () => Promise<UsageSnapshot>;
   readonly refresh: () => Promise<UsageSnapshot>;

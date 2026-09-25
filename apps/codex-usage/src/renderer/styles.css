@@ -1152,6 +1152,33 @@ html.menu-bar-document #root {
   background: transparent;
 }
 
+.provider-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.provider-toolbar > span,
+.provider-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+.provider-select {
+  max-width: 100%;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 0 8px;
+  background: #080808;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 11px;
+}
+.menu-activity-section > .provider-select {
+  width: 100%;
+  margin-bottom: 3px;
+}
+
 .menu-bar-surface {
   display: flex;
   width: 100%;

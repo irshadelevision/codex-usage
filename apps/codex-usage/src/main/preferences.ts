@@ -8,9 +8,16 @@ import type {
   UsagePreferencesPatch,
   UsageRange,
 } from "../shared/types.ts";
-import { MENU_BAR_DISPLAYS, USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
+import {
+  MENU_BAR_DISPLAYS,
+  USAGE_CURRENCIES,
+  USAGE_RANGES,
+  USAGE_PROVIDERS,
+  type UsageProvider,
+} from "../shared/types.ts";
 
 const DEFAULT_PREFERENCES: UsagePreferences = {
+  usageProvider: "codex",
   showInMenuBar: true,
   showMenuBarIcon: true,
   launchAtLogin: false,
@@ -56,6 +63,9 @@ function decodePreferences(value: unknown): UsagePreferences {
   const input = value as Record<string, unknown>;
   const menuBarDisplay = decodeMenuBarDisplay(input["menuBarDisplay"]);
   return {
+    usageProvider: USAGE_PROVIDERS.includes(input["usageProvider"] as UsageProvider)
+      ? (input["usageProvider"] as UsageProvider)
+      : "codex",
     showInMenuBar:
       typeof input["showInMenuBar"] === "boolean"
         ? input["showInMenuBar"]

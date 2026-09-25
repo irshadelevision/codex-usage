@@ -1,6 +1,8 @@
 import { CheckIcon, InfoIcon, RefreshCwIcon, SettingsIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CustomRangePicker, useCustomUsage } from "./CustomRangePicker.tsx";
+import { ProviderSelect } from "./ProviderSelect.tsx";
+import { usageRanges } from "../shared/providers.ts";
 
 import type {
   BreakdownKind,
@@ -467,7 +469,7 @@ function BreakdownTable({
           {rows.length === 0 ? (
             <tr>
               <td colSpan={kind === "modes" ? 6 : 5} className="empty-row">
-                No Codex activity in this range.
+                No activity recorded for this provider in this range.
               </td>
             </tr>
           ) : (
@@ -480,7 +482,9 @@ function BreakdownTable({
                     <td className="mode-cell">{formatMode(row.mode ?? "unknown")}</td>
                   ) : null}
                   <td className="numeric strong-cell">
-                    {formatCurrency(row.costUsd, currency, exchangeRates)}
+                    {row.pricedRecords === 0 && (row.unpricedRecords ?? 0) > 0
+                      ? "Unavailable"
+                      : `${(row.unpricedRecords ?? 0) > 0 ? "≥ " : ""}${formatCurrency(row.costUsd, currency, exchangeRates)}`}
                   </td>
                   <td>
                     <div className="share-cell">
@@ -538,8 +542,8 @@ function ErrorView({
 
 export function App() {
   const [snapshot, setSnapshot] = useState<UsageSnapshot | null>(null);
-  const custom = useCustomUsage(snapshot?.readAt);
   const [preferences, setPreferences] = useState<UsagePreferences | null>(null);
+  const custom = useCustomUsage(snapshot?.readAt, preferences?.usageProvider);
   const [range, setRange] = useState<UsageRange>("7d");
   const [metric, setMetric] = useState<UsageMetric>("cost");
   const [breakdown, setBreakdown] = useState<BreakdownKind>("models");
@@ -615,16 +619,26 @@ export function App() {
   }
   if (snapshot === null || preferences === null) return <LoadingView />;
 
-  const summary = custom.summary ?? snapshot.ranges[range];
+  const summary = custom.summary ?? usageRanges(snapshot, preferences.usageProvider)[range];
+  const costUnavailable = summary.records > 0 && summary.unpricedRecords === summary.records;
   const primaryValue =
     metric === "cost"
-      ? formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)
+      ? costUnavailable
+        ? "Unavailable"
+        : formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates)
       : formatTokens(summary.totalTokens);
-  const primaryLabel = metric === "cost" ? "API estimate" : "Processed tokens";
+  const primaryLabel =
+    metric === "cost"
+      ? summary.unpricedRecords > 0
+        ? "Partial API estimate"
+        : "API estimate"
+      : "Processed tokens";
   const secondaryValue =
     metric === "cost"
       ? formatTokens(summary.totalTokens)
-      : formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates);
+      : costUnavailable
+        ? "Unavailable"
+        : formatCurrency(summary.costUsd, preferences.currency, snapshot.exchangeRates);
   const secondaryLabel = metric === "cost" ? "Processed tokens" : "API estimate";
 
   return (
@@ -686,6 +700,19 @@ export function App() {
       </header>
 
       <main className="content">
+        <div className="provider-toolbar">
+          <ProviderSelect
+            value={preferences.usageProvider}
+            onChange={(usageProvider) => updatePreferences({ usageProvider })}
+          />
+          <span>Local session activity · API-equivalent estimate, not subscription billing</span>
+        </div>
+        {summary.unpricedRecords > 0 ? (
+          <p className="error-banner" role="status">
+            Prices are unavailable for {formatCount(summary.unpricedRecords)} responses. Their
+            tokens are included; their cost is excluded from the estimate and graph.
+          </p>
+        ) : null}
         <CustomRangePicker
           onApply={custom.setRange}
           loading={custom.loading}
@@ -708,7 +735,7 @@ export function App() {
             <MetricBlock
               label={primaryLabel}
               value={primaryValue}
-              detail={metric === "cost" ? "Total cost" : "All processed tokens"}
+              detail={metric === "cost" ? "Published model rates" : "All processed tokens"}
             />
             <MetricBlock
               label="Sessions"
@@ -744,7 +771,14 @@ export function App() {
           />
         </section>
 
-        <UsageLimits snapshot={snapshot} />
+        {preferences.usageProvider !== "claude" ? (
+          <UsageLimits snapshot={snapshot} />
+        ) : (
+          <p className="provider-note">
+            Claude Code activity comes from local session files. Subscription usage limits are not
+            reported in these files.
+          </p>
+        )}
 
         <Totals
           summary={summary}
@@ -774,7 +808,12 @@ export function App() {
 
         <footer className="status-footer">
           <span className="scan-status">
-            <CheckIcon size={12} /> Scanned {snapshot.sourcePath}
+            <CheckIcon size={12} /> Scanned{" "}
+            {preferences.usageProvider === "claude"
+              ? (snapshot.claudeSourcePath ?? "Claude Code sessions")
+              : preferences.usageProvider === "all"
+                ? "Codex and Claude Code sessions"
+                : snapshot.sourcePath}
           </span>
           <i />
           <span>{formatUpdatedAt(snapshot.readAt)}</span>

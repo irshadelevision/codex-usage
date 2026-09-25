@@ -13,6 +13,7 @@ import {
 } from "electron";
 
 import type { AppInfo, UsagePreferencesPatch, UsageSnapshot } from "./shared/types.ts";
+import { USAGE_PROVIDERS, type UsageProvider } from "./shared/types.ts";
 import { MenuBarLifecycle } from "./main/appLifecycle.ts";
 import { ExchangeRateReader } from "./main/exchangeRates.ts";
 import { MENU_BAR_POPOVER_HEIGHT, MenuBarController } from "./main/menuBar.ts";
@@ -62,6 +63,10 @@ const exchangeRateReader = new ExchangeRateReader(
 const rateLimitReader = new CodexRateLimitReader(app.getPath("home"), app.getVersion());
 const scanner = new CodexUsageScanner({
   sessionsPath,
+  claudeProjectsPath: NodePath.join(
+    process.env["CLAUDE_CONFIG_DIR"]?.trim() || NodePath.join(app.getPath("home"), ".claude"),
+    "projects",
+  ),
   scanCachePath: NodePath.join(userDataPath, "usage-scan-cache.json"),
   ratesCachePath: NodePath.join(userDataPath, "usage-model-rates.json"),
 });
@@ -314,8 +319,9 @@ function installApplicationMenu() {
 }
 
 ipcMain.handle("usage:get-snapshot", () => latestSnapshot ?? refreshUsage());
-ipcMain.handle("usage:custom-summary", async (_event, range) => {
-  const result = await scanner.scan(Date.now(), range);
+ipcMain.handle("usage:custom-summary", async (_event, range, provider: UsageProvider = "codex") => {
+  if (!USAGE_PROVIDERS.includes(provider)) throw new Error("Choose a supported usage provider.");
+  const result = await scanner.scan(Date.now(), range, provider);
   if (!result.customSummary) throw new Error("Choose a custom range.");
   return result.customSummary;
 });

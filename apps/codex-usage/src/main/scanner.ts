@@ -10,6 +10,7 @@ import type {
   UsagePoint,
   UsageRange,
   UsageSnapshot,
+  UsageProvider,
 } from "../shared/types.ts";
 import { USAGE_RANGES } from "../shared/types.ts";
 import { validateCustomRange, type CustomRange } from "../shared/customRange.ts";
@@ -19,7 +20,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const MTIME_SLACK_MS = 36 * 60 * 60 * 1000;
 const FORK_COPY_MAX_GAP_MS = 1000;
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 const EMPTY_TOTALS: TokenTotals = {
   uncachedInputTokens: 0,
@@ -30,6 +31,10 @@ const EMPTY_TOTALS: TokenTotals = {
 };
 
 export interface UsageRecord {
+  readonly provider?: "codex" | "claude";
+  readonly dedupeKey?: string | null;
+  readonly fast?: boolean;
+  readonly reportedCostUsd?: number | null;
   readonly timestampMs: number;
   readonly model: string;
   readonly mode: string;
@@ -60,6 +65,8 @@ interface ScanCacheEntry {
 }
 
 interface MutableBreakdown {
+  unpricedRecords: number;
+  pricedRecords: number;
   readonly model: string;
   readonly mode: string | null;
   costUsd: number;
@@ -102,6 +109,8 @@ function addTotals(left: TokenTotals, right: TokenTotals): TokenTotals {
     uncachedInputTokens: left.uncachedInputTokens + right.uncachedInputTokens,
     cachedInputTokens: left.cachedInputTokens + right.cachedInputTokens,
     cacheCreationTokens: left.cacheCreationTokens + right.cacheCreationTokens,
+    cacheCreationOneHourTokens:
+      (left.cacheCreationOneHourTokens ?? 0) + (right.cacheCreationOneHourTokens ?? 0),
     outputTokens: left.outputTokens + right.outputTokens,
     reasoningTokens: left.reasoningTokens + right.reasoningTokens,
   };
@@ -207,6 +216,7 @@ export function parseCodexLine(line: string, state: CodexScanState): UsageRecord
 
   return {
     timestampMs,
+    provider: "codex",
     model: state.model,
     mode: state.mode,
     sessionId: state.sessionId,
@@ -214,7 +224,72 @@ export function parseCodexLine(line: string, state: CodexScanState): UsageRecord
   };
 }
 
-async function readTranscript(filePath: string): Promise<readonly UsageRecord[] | null> {
+/** Claude emits repeated assistant content blocks with the same message/request usage. */
+export function parseClaudeLine(line: string): UsageRecord | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  if (typeof value !== "object" || value === null) return null;
+  const raw = value as Record<string, unknown>;
+  if (raw["type"] !== "assistant") return null;
+  const message = raw["message"];
+  if (typeof message !== "object" || message === null) return null;
+  const msg = message as Record<string, unknown>;
+  const usage = msg["usage"];
+  if (typeof usage !== "object" || usage === null) return null;
+  const u = usage as Record<string, unknown>;
+  const model = typeof msg["model"] === "string" ? msg["model"] : "";
+  const timestampMs = parseTimestampMs(raw["timestamp"]);
+  if (timestampMs === null || !model || model === "<synthetic>" || model === "synthetic")
+    return null;
+  const creation = u["cache_creation"];
+  const oneHour =
+    typeof creation === "object" && creation !== null
+      ? int((creation as Record<string, unknown>)["ephemeral_1h_input_tokens"])
+      : 0;
+  const totals: TokenTotals = {
+    uncachedInputTokens: int(u["input_tokens"]),
+    cachedInputTokens: int(u["cache_read_input_tokens"]),
+    cacheCreationTokens: int(u["cache_creation_input_tokens"]),
+    cacheCreationOneHourTokens: Math.min(oneHour, int(u["cache_creation_input_tokens"])),
+    outputTokens: int(u["output_tokens"]),
+    reasoningTokens: 0,
+  };
+  if (totalTokens(totals) === 0) return null;
+  const id = typeof msg["id"] === "string" ? msg["id"] : "";
+  const request = typeof raw["requestId"] === "string" ? raw["requestId"] : "";
+  const cost = raw["costUSD"];
+  return {
+    provider: "claude",
+    timestampMs,
+    model,
+    mode: "unknown",
+    sessionId: typeof raw["sessionId"] === "string" ? raw["sessionId"] : "",
+    totals,
+    fast: u["speed"] === "fast",
+    reportedCostUsd: typeof cost === "number" && Number.isFinite(cost) && cost >= 0 ? cost : null,
+    dedupeKey: id || request ? JSON.stringify([id, request]) : null,
+  };
+}
+
+export function deduplicateUsage(records: readonly UsageRecord[]): UsageRecord[] {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    if (!record.dedupeKey) return true;
+    const key = `${record.provider}:${record.dedupeKey}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function readTranscript(
+  filePath: string,
+  provider: "codex" | "claude",
+): Promise<readonly UsageRecord[] | null> {
   const records: UsageRecord[] = [];
   const state = initialCodexScanState();
   try {
@@ -223,6 +298,12 @@ async function readTranscript(filePath: string): Promise<readonly UsageRecord[] 
       crlfDelay: Infinity,
     });
     for await (const line of lines) {
+      if (provider === "claude") {
+        if (!line.includes('"usage"')) continue;
+        const record = parseClaudeLine(line);
+        if (record !== null) records.push({ ...record, sessionId: record.sessionId || filePath });
+        continue;
+      }
       if (
         !line.includes('"token_count"') &&
         !line.includes('"turn_context"') &&
@@ -231,7 +312,7 @@ async function readTranscript(filePath: string): Promise<readonly UsageRecord[] 
         continue;
       }
       const record = parseCodexLine(line, state);
-      if (record !== null) records.push(record);
+      if (record !== null) records.push({ ...record, sessionId: record.sessionId || filePath });
     }
     return records;
   } catch {
@@ -279,6 +360,7 @@ function isTokenTotals(value: unknown): value is TokenTotals {
     totals["cacheCreationTokens"],
     totals["outputTokens"],
     totals["reasoningTokens"],
+    totals["cacheCreationOneHourTokens"] ?? 0,
   ].every((total) => typeof total === "number" && Number.isFinite(total) && total >= 0);
 }
 
@@ -292,6 +374,10 @@ function isUsageRecord(value: unknown): value is UsageRecord {
     typeof record["model"] === "string" &&
     typeof record["mode"] === "string" &&
     typeof record["sessionId"] === "string" &&
+    (record["provider"] === "codex" || record["provider"] === "claude") &&
+    (record["dedupeKey"] === undefined ||
+      record["dedupeKey"] === null ||
+      typeof record["dedupeKey"] === "string") &&
     isTokenTotals(record["totals"])
   );
 }
@@ -390,6 +476,8 @@ function buildBreakdownRows(
       model: value.model,
       mode: value.mode,
       costUsd: value.costUsd,
+      unpricedRecords: value.unpricedRecords,
+      pricedRecords: value.pricedRecords,
       costShare: costUsd === 0 ? 0 : value.costUsd / costUsd,
       totalTokens: value.totalTokens,
       tokenShare: allTokens === 0 ? 0 : value.totalTokens / allTokens,
@@ -406,6 +494,7 @@ function addBreakdown(
   costUsd: number,
   tokens: number,
   sessionId: string,
+  priced: boolean,
 ) {
   const value = target.get(key) ?? {
     model,
@@ -413,7 +502,11 @@ function addBreakdown(
     costUsd: 0,
     totalTokens: 0,
     sessions: new Set<string>(),
+    unpricedRecords: 0,
+    pricedRecords: 0,
   };
+  if (priced) value.pricedRecords += 1;
+  else value.unpricedRecords += 1;
   value.costUsd += costUsd;
   value.totalTokens += tokens;
   if (sessionId.length > 0) value.sessions.add(sessionId);
@@ -460,6 +553,7 @@ export function aggregateRange(
   let unpricedRecords = 0;
 
   for (const record of records) {
+    if (record.timestampMs > nowMs) continue;
     if (custom && (record.timestampMs < sinceTimeMs || record.timestampMs >= endTimeMs)) continue;
     let pointKey: string;
     if (isHourly) {
@@ -472,13 +566,14 @@ export function aggregateRange(
     }
 
     const tokens = totalTokens(record.totals);
-    const priced = priceTokens(rates, record.model, record.totals);
+    const priced = priceTokens(rates, record.model, record.totals, record);
     totals = addTotals(totals, record.totals);
     costUsd += priced.costUsd;
     cacheSavingsUsd += priced.cacheSavingsUsd;
     countedRecords += 1;
     if (!priced.priced) unpricedRecords += 1;
-    if (record.sessionId.length > 0) sessions.add(record.sessionId);
+    const sessionKey = record.sessionId ? `${record.provider ?? "codex"}:${record.sessionId}` : "";
+    if (sessionKey) sessions.add(sessionKey);
 
     const point = points.get(pointKey);
     if (point !== undefined) {
@@ -492,7 +587,8 @@ export function aggregateRange(
       null,
       priced.costUsd,
       tokens,
-      record.sessionId,
+      sessionKey,
+      priced.priced,
     );
     addBreakdown(
       modes,
@@ -501,7 +597,8 @@ export function aggregateRange(
       record.mode,
       priced.costUsd,
       tokens,
-      record.sessionId,
+      sessionKey,
+      priced.priced,
     );
   }
 
@@ -531,16 +628,19 @@ export function aggregateRange(
 
 export class CodexUsageScanner {
   readonly #sessionsPath: string;
+  readonly #claudeProjectsPath: string | undefined;
   readonly #scanCachePath: string;
   readonly #ratesCachePath: string;
   #cache: Map<string, ScanCacheEntry> | null = null;
 
   constructor(input: {
     readonly sessionsPath: string;
+    readonly claudeProjectsPath?: string;
     readonly scanCachePath: string;
     readonly ratesCachePath: string;
   }) {
     this.#sessionsPath = input.sessionsPath;
+    this.#claudeProjectsPath = input.claudeProjectsPath;
     this.#scanCachePath = input.scanCachePath;
     this.#ratesCachePath = input.ratesCachePath;
   }
@@ -550,9 +650,10 @@ export class CodexUsageScanner {
   scan(
     nowMs = Date.now(),
     custom?: CustomRange,
+    provider: UsageProvider = "all",
   ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
     const checked = custom ? validateCustomRange(custom, nowMs) : undefined;
-    const result = this.#queue.then(() => this.#scan(nowMs, checked));
+    const result = this.#queue.then(() => this.#scan(nowMs, checked, provider));
     this.#queue = result.catch(() => undefined);
     return result;
   }
@@ -560,6 +661,7 @@ export class CodexUsageScanner {
   async #scan(
     nowMs: number,
     custom?: CustomRange,
+    provider: UsageProvider = "all",
   ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
     const startedAt = Date.now();
     if (this.#cache === null) this.#cache = await readScanCache(this.#scanCachePath);
@@ -570,10 +672,15 @@ export class CodexUsageScanner {
     const earliestMs =
       Math.min(Date.parse(`${sinceDay}T00:00:00Z`), custom ? Date.parse(custom.start) : Infinity) -
       MTIME_SLACK_MS;
-    const [pricing, files] = await Promise.all([
+    const [pricing, codexFiles, claudeFiles] = await Promise.all([
       loadRates(this.#ratesCachePath, nowMs),
       listTranscriptFiles(this.#sessionsPath, earliestMs),
+      this.#claudeProjectsPath ? listTranscriptFiles(this.#claudeProjectsPath, earliestMs) : [],
     ]);
+    const files = [
+      ...codexFiles.map((file) => ({ ...file, provider: "codex" as const })),
+      ...claudeFiles.map((file) => ({ ...file, provider: "claude" as const })),
+    ].sort((a, b) => a.path.localeCompare(b.path));
 
     const records: UsageRecord[] = [];
     const livePaths = new Set<string>();
@@ -585,20 +692,20 @@ export class CodexUsageScanner {
       livePaths.add(file.path);
       const cached = this.#cache.get(file.path);
       if (cached?.size === file.size && cached.mtimeMs === file.mtimeMs) {
-        records.push(...cached.records);
+        for (const record of cached.records) records.push(record);
         if (cached.records.length === 0) skippedFiles += 1;
         else scannedFiles += 1;
         continue;
       }
 
-      const parsed = await readTranscript(file.path);
+      const parsed = await readTranscript(file.path, file.provider);
       if (parsed === null) {
         skippedFiles += 1;
         continue;
       }
       this.#cache.set(file.path, { size: file.size, mtimeMs: file.mtimeMs, records: parsed });
       cacheChanged = true;
-      records.push(...parsed);
+      for (const record of parsed) records.push(record);
       if (parsed.length === 0) skippedFiles += 1;
       else scannedFiles += 1;
     }
@@ -614,16 +721,31 @@ export class CodexUsageScanner {
       await writeScanCache(this.#scanCachePath, this.#cache).catch(() => undefined);
     }
 
-    const summaries = Object.fromEntries(
-      USAGE_RANGES.map((range) => [
-        range,
-        aggregateRange(records, range, nowMs, timeZone, pricing.rates),
-      ]),
-    ) as Record<UsageRange, RangeSummary>;
+    const uniqueRecords = deduplicateUsage(records);
+    const byProvider = {
+      codex: uniqueRecords.filter((record) => record.provider !== "claude"),
+      claude: uniqueRecords.filter((record) => record.provider === "claude"),
+    };
+    const summarize = (selected: readonly UsageRecord[]) =>
+      Object.fromEntries(
+        USAGE_RANGES.map((range) => [
+          range,
+          aggregateRange(selected, range, nowMs, timeZone, pricing.rates),
+        ]),
+      ) as Record<UsageRange, RangeSummary>;
 
     return {
       ...(custom
-        ? { customSummary: aggregateRange(records, "90d", nowMs, timeZone, pricing.rates, custom) }
+        ? {
+            customSummary: aggregateRange(
+              provider === "all" ? uniqueRecords : byProvider[provider],
+              "90d",
+              nowMs,
+              timeZone,
+              pricing.rates,
+              custom,
+            ),
+          }
         : {}),
       readAt: new Date(nowMs).toISOString(),
       sourcePath: this.#sessionsPath,
@@ -636,7 +758,9 @@ export class CodexUsageScanner {
         fetchedAt:
           pricing.fetchedAtMs === null ? null : new Date(pricing.fetchedAtMs).toISOString(),
       },
-      ranges: summaries,
+      ranges: summarize(uniqueRecords),
+      providerRanges: { codex: summarize(byProvider.codex), claude: summarize(byProvider.claude) },
+      ...(this.#claudeProjectsPath ? { claudeSourcePath: this.#claudeProjectsPath } : {}),
     };
   }
 }

@@ -8,7 +8,7 @@ import type {
   UsageRange,
   UsageSnapshot,
 } from "../shared/types.ts";
-import { LIVE_USAGE_CURRENCIES } from "../shared/types.ts";
+import { LIVE_USAGE_CURRENCIES, USAGE_RANGES } from "../shared/types.ts";
 
 const rangeSize: Record<UsageRange, number> = { "24h": 24, "7d": 7, "30d": 30, "90d": 90 };
 const rangeScale: Record<UsageRange, number> = { "24h": 0.48, "7d": 1, "30d": 3.1, "90d": 8.2 };
@@ -116,7 +116,7 @@ function sampleSummary(range: UsageRange, nowMs: number): RangeSummary {
 function makeSnapshot(): UsageSnapshot {
   const nowMs = Date.now();
   const sampleRateDate = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  return {
+  const snapshot: Omit<UsageSnapshot, "providerRanges"> = {
     readAt: new Date(nowMs).toISOString(),
     sourcePath: "~/.codex/sessions",
     scannedFiles: 143,
@@ -189,11 +189,44 @@ function makeSnapshot(): UsageSnapshot {
       "90d": sampleSummary("90d", nowMs),
     },
   };
+  const claude = Object.fromEntries(
+    USAGE_RANGES.map((range): [UsageRange, RangeSummary] => {
+      const summary = snapshot.ranges[range];
+      return [
+        range,
+        {
+          ...summary,
+          costUsd: 0,
+          totalTokens: 0,
+          cacheSavingsUsd: 0,
+          sessions: 0,
+          records: 0,
+          unpricedRecords: 0,
+          totals: {
+            uncachedInputTokens: 0,
+            cachedInputTokens: 0,
+            cacheCreationTokens: 0,
+            outputTokens: 0,
+            reasoningTokens: 0,
+          },
+          models: [],
+          modes: [],
+          series: summary.series.map((point) => ({ ...point, costUsd: 0, totalTokens: 0 })),
+        },
+      ];
+    }),
+  ) as Record<UsageRange, RangeSummary>;
+  return {
+    ...snapshot,
+    claudeSourcePath: "~/.claude/projects",
+    providerRanges: { codex: snapshot.ranges, claude },
+  };
 }
 
 export function createSampleApi(): CodexUsageApi {
   let snapshot = makeSnapshot();
   let preferences: UsagePreferences = {
+    usageProvider: "codex",
     showInMenuBar: true,
     showMenuBarIcon: true,
     launchAtLogin: false,
@@ -220,15 +253,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.36", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.37", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.36",
-        latestVersion: "0.1.36",
+        currentVersion: "0.1.37",
+        latestVersion: "0.1.37",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.36",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.37",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.36/Codex.Usage-0.1.36-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.37/Codex.Usage-0.1.37-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

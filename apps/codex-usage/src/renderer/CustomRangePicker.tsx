@@ -4,16 +4,20 @@ import {
   validateCustomRange,
   type CustomRange,
 } from "../shared/customRange.ts";
-import type { RangeSummary } from "../shared/types.ts";
+import type { RangeSummary, UsageProvider } from "../shared/types.ts";
 import { api } from "./api.ts";
 
 function localInput(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-export function useCustomUsage(readAt?: string) {
+export function useCustomUsage(readAt?: string, provider: UsageProvider = "codex") {
   const [range, setRange] = useState<CustomRange | null>(null);
-  const [summary, setSummary] = useState<RangeSummary | null>(null);
+  const [result, setResult] = useState<{
+    summary: RangeSummary;
+    provider: UsageProvider;
+    readAt: string | undefined;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
@@ -22,9 +26,9 @@ export function useCustomUsage(readAt?: string) {
     setLoading(range !== null);
     if (range) {
       void api
-        .getCustomSummary(range)
+        .getCustomSummary(range, provider)
         .then((value) => {
-          if (active) setSummary(value);
+          if (active) setResult({ summary: value, provider, readAt });
         })
         .catch((cause: unknown) => {
           if (active) setError(cause instanceof Error ? cause.message : String(cause));
@@ -36,7 +40,8 @@ export function useCustomUsage(readAt?: string) {
     return () => {
       active = false;
     };
-  }, [range, readAt]);
+  }, [range, readAt, provider]);
+  const summary = result?.provider === provider && result.readAt === readAt ? result.summary : null;
   const selectedSummary =
     range && summary?.since === range.start && summary.until === range.end ? summary : null;
   return {

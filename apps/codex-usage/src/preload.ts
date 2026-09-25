@@ -10,7 +10,8 @@ import type {
 } from "./shared/types.ts";
 
 const api: CodexUsageApi = {
-  getCustomSummary: (range) => ipcRenderer.invoke("usage:custom-summary", range),
+  getCustomSummary: (range, provider) =>
+    ipcRenderer.invoke("usage:custom-summary", range, provider),
   getSnapshot: () => ipcRenderer.invoke("usage:get-snapshot") as Promise<UsageSnapshot>,
   refresh: () => ipcRenderer.invoke("usage:refresh") as Promise<UsageSnapshot>,
   getPreferences: () => ipcRenderer.invoke("usage:get-preferences"),

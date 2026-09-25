@@ -9,16 +9,16 @@ import type {
   UsageSnapshot,
 } from "../shared/types.ts";
 import { menuBarDisplayFixedRange } from "../shared/menuBarOptions.ts";
+import { usageRanges } from "../shared/providers.ts";
 import {
   formatMenuBarCurrency,
   formatRateLimitStatus,
-  formatRateLimitStatusWithCost,
   getMenuBarPopoverHeight,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
 
-export const MENU_BAR_POPOVER_HEIGHT = 800;
+export const MENU_BAR_POPOVER_HEIGHT = 830;
 
 const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -57,7 +57,8 @@ function formatRangeDisplay(
 ): string {
   if (display === "tokens") return formatTokens(summary.totalTokens);
   if (display === "sessions") return new Intl.NumberFormat("en-US").format(summary.sessions);
-  return formatMenuBarCurrency(summary.costUsd, currency, exchangeRates);
+  if (summary.records > 0 && summary.unpricedRecords === summary.records) return "—";
+  return `${summary.unpricedRecords > 0 ? "≥ " : ""}${formatMenuBarCurrency(summary.costUsd, currency, exchangeRates)}`;
 }
 
 function usesCountdown(display: MenuBarDisplay): boolean {
@@ -76,14 +77,13 @@ function formatStatusTitle(
   if (preferences.menuBarDisplay === "icon-only") return "";
   const costRange = menuBarDisplayFixedRange(preferences.menuBarDisplay);
   if (costRange !== null) {
-    const costUsd = snapshot.ranges[costRange].costUsd;
-    return formatRateLimitStatusWithCost(
-      snapshot.rateLimits.codex,
-      costUsd,
+    const cost = formatRangeDisplay(
+      usageRanges(snapshot, preferences.usageProvider)[costRange],
+      "cost",
       preferences.currency,
       snapshot.exchangeRates,
-      nowMs,
     );
+    return `${formatRateLimitStatus(snapshot.rateLimits.codex, "usage-time", nowMs)} · ${cost}`;
   }
   if (preferences.menuBarDisplay === "codex-weekly") {
     return formatRateLimitStatus(snapshot.rateLimits.codex, "usage", nowMs);
@@ -98,7 +98,7 @@ function formatStatusTitle(
     return formatRateLimitStatus(snapshot.rateLimits.codex, "time-date", nowMs);
   }
   return formatRangeDisplay(
-    snapshot.ranges[preferences.menuBarRange],
+    usageRanges(snapshot, preferences.usageProvider)[preferences.menuBarRange],
     preferences.menuBarDisplay,
     preferences.currency,
     snapshot.exchangeRates,
