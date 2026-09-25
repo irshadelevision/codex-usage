@@ -76,6 +76,27 @@ export const MENU_BAR_DISPLAYS = [
   "codex-weekly-time-cost-90d",
   "codex-weekly-date",
   "codex-reset",
+  "codex-five-hour",
+  "codex-five-hour-time",
+  "codex-five-hour-date",
+  "claude-weekly",
+  "claude-weekly-time",
+  "claude-weekly-date",
+  "claude-reset",
+  "claude-five-hour",
+  "claude-five-hour-time",
+  "claude-five-hour-date",
+  "claude-five-hour-reset",
+  "claude-weekly-time-cost-7d",
+  "claude-weekly-time-cost-30d",
+  "claude-weekly-time-cost-90d",
+  "both-weekly",
+  "both-weekly-time",
+  "both-weekly-date",
+  "both-five-hour-time",
+  "both-weekly-time-cost-7d",
+  "both-weekly-time-cost-30d",
+  "both-weekly-time-cost-90d",
   "icon-only",
 ] as const;
 export type MenuBarDisplay = (typeof MENU_BAR_DISPLAYS)[number];
@@ -157,6 +178,14 @@ export interface CodexRateLimits {
 
 export type ExchangeRateStatus = "fresh" | "cached" | "unavailable";
 
+export interface ClaudeRateLimits {
+  readonly status: "available" | "stale" | "unavailable";
+  readonly readAt: string;
+  readonly weekly: CodexRateLimitWindow | null;
+  readonly fiveHour: CodexRateLimitWindow | null;
+  readonly message: string | null;
+}
+
 export interface ExchangeRateSnapshot {
   readonly status: ExchangeRateStatus;
   readonly source: "Frankfurter";
@@ -184,6 +213,7 @@ export interface UsageSnapshot {
   };
   readonly exchangeRates: ExchangeRateSnapshot;
   readonly rateLimits: CodexRateLimits;
+  readonly claudeRateLimits: ClaudeRateLimits;
   readonly ranges: Readonly<Record<UsageRange, RangeSummary>>;
 }
 

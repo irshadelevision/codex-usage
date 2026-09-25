@@ -2,28 +2,15 @@ import * as NodePath from "node:path";
 
 import { BrowserWindow, Tray, app, nativeImage, screen, type NativeImage } from "electron";
 
-import type {
-  MenuBarDisplay,
-  RangeSummary,
-  UsagePreferences,
-  UsageSnapshot,
-} from "../shared/types.ts";
-import { menuBarDisplayFixedRange } from "../shared/menuBarOptions.ts";
-import { usageRanges } from "../shared/providers.ts";
+import type { UsagePreferences, UsageSnapshot } from "../shared/types.ts";
+import { formatStatusTitle, usesCountdown } from "./statusTitle.ts";
 import {
-  formatMenuBarCurrency,
-  formatRateLimitStatus,
   getMenuBarPopoverHeight,
   getMenuBarPopoverPosition,
   shouldShowMenuBarIcon,
 } from "./menuBarFormatting.ts";
 
 export const MENU_BAR_POPOVER_HEIGHT = 875;
-
-const TOKEN_FORMAT = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  maximumSignificantDigits: 3,
-});
 
 function reportPopoverFailure(cause: unknown) {
   const message = cause instanceof Error ? cause.message : String(cause);
@@ -43,66 +30,6 @@ function createMenuBarIcon() {
     }
   }
   return nativeImage.createEmpty();
-}
-
-function formatTokens(value: number): string {
-  return TOKEN_FORMAT.format(value);
-}
-
-function formatRangeDisplay(
-  summary: RangeSummary,
-  display: MenuBarDisplay,
-  currency: UsagePreferences["currency"],
-  exchangeRates: UsageSnapshot["exchangeRates"],
-): string {
-  if (display === "tokens") return formatTokens(summary.totalTokens);
-  if (display === "sessions") return new Intl.NumberFormat("en-US").format(summary.sessions);
-  if (summary.records > 0 && summary.unpricedRecords === summary.records) return "—";
-  return `${summary.unpricedRecords > 0 ? "≥ " : ""}${formatMenuBarCurrency(summary.costUsd, currency, exchangeRates)}`;
-}
-
-function usesCountdown(display: MenuBarDisplay): boolean {
-  return (
-    display === "codex-weekly-time" ||
-    menuBarDisplayFixedRange(display) !== null ||
-    display === "codex-reset"
-  );
-}
-
-function formatStatusTitle(
-  snapshot: UsageSnapshot,
-  preferences: UsagePreferences,
-  nowMs: number,
-): string {
-  if (preferences.menuBarDisplay === "icon-only") return "";
-  const costRange = menuBarDisplayFixedRange(preferences.menuBarDisplay);
-  if (costRange !== null) {
-    const cost = formatRangeDisplay(
-      usageRanges(snapshot, preferences.usageProvider)[costRange],
-      "cost",
-      preferences.currency,
-      snapshot.exchangeRates,
-    );
-    return `${formatRateLimitStatus(snapshot.rateLimits.codex, "usage-time", nowMs)} · ${cost}`;
-  }
-  if (preferences.menuBarDisplay === "codex-weekly") {
-    return formatRateLimitStatus(snapshot.rateLimits.codex, "usage", nowMs);
-  }
-  if (preferences.menuBarDisplay === "codex-weekly-time") {
-    return formatRateLimitStatus(snapshot.rateLimits.codex, "usage-time", nowMs);
-  }
-  if (preferences.menuBarDisplay === "codex-weekly-date") {
-    return formatRateLimitStatus(snapshot.rateLimits.codex, "usage-date", nowMs);
-  }
-  if (preferences.menuBarDisplay === "codex-reset") {
-    return formatRateLimitStatus(snapshot.rateLimits.codex, "time-date", nowMs);
-  }
-  return formatRangeDisplay(
-    usageRanges(snapshot, preferences.usageProvider)[preferences.menuBarRange],
-    preferences.menuBarDisplay,
-    preferences.currency,
-    snapshot.exchangeRates,
-  );
 }
 
 interface MenuBarControllerInput {

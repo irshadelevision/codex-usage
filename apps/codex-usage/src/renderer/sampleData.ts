@@ -139,6 +139,27 @@ function makeSnapshot(): UsageSnapshot {
       ),
       message: null,
     },
+    claudeRateLimits: {
+      status: "available",
+      readAt: new Date(nowMs).toISOString(),
+      fiveHour: {
+        limitId: "claude-300",
+        name: "Claude 5-hour",
+        usedPercent: 25,
+        remainingPercent: 75,
+        resetsAt: new Date(nowMs + 3 * 3_600_000).toISOString(),
+        windowDurationMins: 300,
+      },
+      weekly: {
+        limitId: "claude-10080",
+        name: "Claude weekly",
+        usedPercent: 40,
+        remainingPercent: 60,
+        resetsAt: new Date(nowMs + 4 * 86_400_000).toISOString(),
+        windowDurationMins: 10080,
+      },
+      message: null,
+    },
     rateLimits: {
       status: "available",
       readAt: new Date(nowMs).toISOString(),
@@ -253,15 +274,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.1.38", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.1.39", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.1.38",
-        latestVersion: "0.1.38",
+        currentVersion: "0.1.39",
+        latestVersion: "0.1.39",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.38",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.1.39",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.38/Codex.Usage-0.1.38-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.1.39/Codex.Usage-0.1.39-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),

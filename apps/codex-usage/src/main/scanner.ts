@@ -651,7 +651,7 @@ export class CodexUsageScanner {
     nowMs = Date.now(),
     custom?: CustomRange,
     provider: UsageProvider = "all",
-  ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
+  ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits" | "claudeRateLimits">> {
     const checked = custom ? validateCustomRange(custom, nowMs) : undefined;
     const result = this.#queue.then(() => this.#scan(nowMs, checked, provider));
     this.#queue = result.catch(() => undefined);
@@ -662,7 +662,7 @@ export class CodexUsageScanner {
     nowMs: number,
     custom?: CustomRange,
     provider: UsageProvider = "all",
-  ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits">> {
+  ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits" | "claudeRateLimits">> {
     const startedAt = Date.now();
     if (this.#cache === null) this.#cache = await readScanCache(this.#scanCachePath);
 

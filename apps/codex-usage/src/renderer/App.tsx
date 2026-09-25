@@ -301,13 +301,26 @@ function ResetCreditCard({
   );
 }
 
-function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
-  const limits = snapshot.rateLimits;
+export function UsageLimits({
+  snapshot,
+  provider,
+}: {
+  readonly snapshot: UsageSnapshot;
+  readonly provider: "codex" | "claude";
+}) {
+  const isClaude = provider === "claude";
+  const label = isClaude ? "Claude" : "Codex";
+  const limits = isClaude ? snapshot.claudeRateLimits : snapshot.rateLimits;
+  const weekly = isClaude ? snapshot.claudeRateLimits.weekly : snapshot.rateLimits.codex;
+  const fiveHour = isClaude
+    ? snapshot.claudeRateLimits.fiveHour
+    : snapshot.rateLimits.codexFiveHour;
+  const resetCredits = isClaude ? null : snapshot.rateLimits.resetCredits;
   const [nowMs, setNowMs] = useState(() => Date.now());
   const hasResetTime =
-    typeof limits.codex?.resetsAt === "string" ||
-    typeof limits.codexFiveHour?.resetsAt === "string" ||
-    typeof limits.resetCredits?.expiresAt === "string";
+    typeof weekly?.resetsAt === "string" ||
+    typeof fiveHour?.resetsAt === "string" ||
+    typeof resetCredits?.expiresAt === "string";
   useEffect(() => {
     if (!hasResetTime) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
@@ -315,43 +328,46 @@ function UsageLimits({ snapshot }: { readonly snapshot: UsageSnapshot }) {
   }, [hasResetTime]);
   const status =
     limits.status === "stale"
-      ? "Last known values"
-      : limits.planType === null
-        ? "Reported by Codex"
-        : `${limits.planType.replaceAll("_", " ")} plan`;
+      ? `Last known · ${formatUpdatedAt(limits.readAt)}`
+      : isClaude || snapshot.rateLimits.planType === null
+        ? `Reported by ${label}`
+        : `${snapshot.rateLimits.planType.replaceAll("_", " ")} plan`;
   return (
-    <section className="panel rate-limits-panel" aria-labelledby="rate-limits-heading">
+    <section className="panel rate-limits-panel" aria-labelledby={`${provider}-limits-heading`}>
       <div className="rate-limits-heading">
         <div>
-          <h2 id="rate-limits-heading">Usage limits</h2>
-          <p>Rolling and weekly buckets reported by your signed-in Codex CLI session.</p>
+          <h2 id={`${provider}-limits-heading`}>{label} usage limits</h2>
+          <p>
+            Rolling and weekly limits from your signed-in {isClaude ? "Claude Code" : "Codex CLI"}{" "}
+            account.
+          </p>
         </div>
         <span>{status}</span>
       </div>
       <div className="rate-limit-families">
         <div
-          className={`rate-limit-family${limits.codexFiveHour === null ? "" : " has-five-hour"}`}
-          aria-label="Codex limits"
+          className={`rate-limit-family${fiveHour !== null && weekly !== null ? " has-five-hour" : ""}`}
+          aria-label={`${label} limits`}
         >
-          {limits.codexFiveHour === null ? null : (
+          {fiveHour === null ? null : (
             <RateLimitCard
-              label="Codex 5-hour"
-              limit={limits.codexFiveHour}
+              label={`${label} 5-hour`}
+              limit={fiveHour}
               nowMs={nowMs}
               remainingLabel="remaining in this window"
             />
           )}
-          <RateLimitCard
-            label="Codex weekly"
-            limit={limits.codex}
-            nowMs={nowMs}
-            remainingLabel="remaining this week"
-          />
+          {weekly === null && fiveHour !== null ? null : (
+            <RateLimitCard
+              label={`${label} weekly`}
+              limit={weekly}
+              nowMs={nowMs}
+              remainingLabel="remaining this week"
+            />
+          )}
         </div>
       </div>
-      {limits.resetCredits === null ? null : (
-        <ResetCreditCard resetCredits={limits.resetCredits} nowMs={nowMs} />
-      )}
+      {resetCredits === null ? null : <ResetCreditCard resetCredits={resetCredits} nowMs={nowMs} />}
       {limits.message === null ? null : <p className="rate-limit-message">{limits.message}</p>}
     </section>
   );
@@ -772,13 +788,11 @@ export function App() {
         </section>
 
         {preferences.usageProvider !== "claude" ? (
-          <UsageLimits snapshot={snapshot} />
-        ) : (
-          <p className="provider-note">
-            Claude Code activity comes from local session files. Subscription usage limits are not
-            reported in these files.
-          </p>
-        )}
+          <UsageLimits snapshot={snapshot} provider="codex" />
+        ) : null}
+        {preferences.usageProvider !== "codex" ? (
+          <UsageLimits snapshot={snapshot} provider="claude" />
+        ) : null}
 
         <Totals
           summary={summary}

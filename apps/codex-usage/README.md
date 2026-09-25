@@ -10,8 +10,7 @@ The app includes:
 - a persisted Codex / Claude Code / All providers selector for dashboard and menu-bar activity;
 - processed, cached, uncached, output, and reasoning token totals;
 - model breakdowns and model-by-reasoning-mode breakdowns;
-- live Codex weekly usage, plus the conditional 5-hour window when the signed-in Codex CLI
-  session reports it;
+- live Codex and Claude weekly usage, plus conditional 5-hour windows when reported by each account;
 - percentage remaining, reset countdowns, and reset dates for every reported usage window;
 - de-duplication for repeated token events and copied fork/subagent history;
 - LiteLLM pricing with a 24-hour offline cache;
@@ -21,13 +20,13 @@ The app includes:
   and Africa using daily Frankfurter reference rates with a 24-hour local cache and
   last-known-rate fallback;
 - a macOS menu-bar item with a modern true-black usage popover, a visible
-  Both / Codex / Claude activity switcher, and an independently hideable icon;
+  Both / Codex / Claude activity and limits switcher, and an independently hideable icon;
 - an independently configurable dropdown activity range that defaults to 24 hours, with 7-day,
   30-day, and 90-day options;
 - custom start/end dates and times in the dashboard, covering the last two
   years of available local sessions; ranges up to two days use hourly graphs, longer ranges use
   daily graphs. Times are local, the end is exclusive, and choosing a preset exits custom mode;
-- a configurable menu-bar value: cost, tokens, sessions, Codex usage percentage only, percentage
+- a configurable menu-bar value: cost, tokens, sessions, Codex/Claude/Both usage percentage only, percentage
   plus time left, percentage plus time left and 7/30/90-day cost, percentage plus reset date, time
   left plus reset date, or icon only;
 - a native About window with author/version details, an on-demand GitHub release check, and direct
@@ -35,8 +34,14 @@ The app includes:
 - optional launch at login.
 
 Subscription billing is separate from the API-equivalent estimate shown by the app.
-Claude subscription quotas are not available from local transcripts; account-limit percentages
-and resets remain Codex-only. Claude desktop chat history is not scanned.
+Claude subscription quotas are read separately from Anthropic using your Claude Code sign-in.
+Run `claude auth login` if needed, then refresh. macOS may ask to allow access to
+`Claude Code-credentials`. An inference-only setup-token or API key cannot read plan limits.
+The app only reads existing credentials; it does not rotate tokens, modify your login, or send
+inference requests. Claude limits refresh every five minutes, with a manual Refresh option.
+Missing windows are hidden; temporary failures show timestamped last-known values (an asterisk
+in the status item), while expired/rejected credentials show sign-in guidance. The usage endpoint
+is not a public API contract and can change. Claude desktop chat history is not scanned.
 Costs use current standard model rates, with unknown/ambiguous prices explicitly marked as
 unavailable or partial. Provider-specific rates cannot overwrite canonical model rates.
 Claude cache-read/write tokens, one-hour cache writes, fast-mode multipliers, recorded costs,

@@ -1565,18 +1565,17 @@ html.menu-bar-document #root {
   padding: 10px 13px;
 }
 
-.menu-preferences-section {
+.menu-bar-content {
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
-  padding-bottom: 0;
 }
 
-.menu-preferences-section::-webkit-scrollbar {
+.menu-bar-content::-webkit-scrollbar {
   width: 4px;
 }
 
-.menu-preferences-section::-webkit-scrollbar-thumb {
+.menu-bar-content::-webkit-scrollbar-thumb {
   border-radius: 99px;
   background: rgb(255 255 255 / 10%);
 }

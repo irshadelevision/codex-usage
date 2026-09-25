@@ -20,7 +20,7 @@ describe("PreferencesStore", () => {
         store.update({ currency: "INR" }),
         store.update({ usageProvider: "claude" }),
         store.update({ menuBarActivityRange: "30d" }),
-        store.update({ menuBarDisplay: "codex-reset" }),
+        store.update({ menuBarDisplay: "claude-five-hour-time" }),
       ]);
 
       const reloaded = new PreferencesStore(path);
@@ -31,7 +31,7 @@ describe("PreferencesStore", () => {
         currency: "INR",
         usageProvider: "claude",
         menuBarActivityRange: "30d",
-        menuBarDisplay: "codex-reset",
+        menuBarDisplay: "claude-five-hour-time",
       });
     } finally {
       await NodeFSP.rm(directory, { recursive: true, force: true });

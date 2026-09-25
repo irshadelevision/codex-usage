@@ -2,7 +2,7 @@
 
 Codex Usage is a local-first macOS menu-bar app and dashboard for understanding activity recorded
 by Codex and Claude Code. It reads local session files, estimates API-equivalent
-token cost, and displays the account limits reported by the signed-in Codex CLI session.
+token cost, and displays account limits from your signed-in Codex CLI and Claude Code accounts.
 
 ## Features
 
@@ -12,13 +12,13 @@ token cost, and displays the account limits reported by the signed-in Codex CLI 
 - Hourly and daily cost/token graphs.
 - Processed, cached, uncached, output, and reasoning token totals.
 - Model, mode, and model-by-reasoning-mode breakdowns.
-- Codex weekly usage with percentage remaining, reset countdowns, and reset dates.
-- Conditional Codex 5-hour usage limits; a 5-hour row is hidden when the CLI does not
+- Codex and Claude weekly usage with percentage remaining, reset countdowns, and reset dates.
+- Conditional Codex and Claude 5-hour usage limits; a 5-hour row is hidden when the provider does not
   report that bucket for the account.
 - A display-only banked-reset indicator with its expiry when reset credits are reported. The app
   never consumes a reset.
 - A true-black macOS dashboard and modern menu-bar popover with a prominent
-  Both / Codex / Claude activity switcher. Both shows separate provider totals.
+  Both / Codex / Claude switcher for activity and limits. Both shows separate provider totals.
 - Configurable menu-bar text for usage, remaining time, reset date, fixed-range cost combinations,
   cost, tokens, or sessions, plus an option to hide the icon when text is shown.
 - USD and common international currencies, using fixed peg rates where appropriate and daily
@@ -28,9 +28,9 @@ token cost, and displays the account limits reported by the signed-in Codex CLI 
 
 Session, token, and cost data stay on the Mac. Subscription billing is separate from the
 API-equivalent estimate displayed by the app.
-The provider selector applies to activity, graphs, breakdowns, and menu-bar costs/tokens/sessions.
-Subscription-limit percentages and reset information remain Codex-only: Claude's local transcripts
-do not report subscription quotas. Claude desktop chat history is not scanned.
+The provider selector applies to activity, graphs, breakdowns, limits, and menu-bar costs/tokens/sessions.
+Explicit Codex/Claude/Both status-item options independently select that provider's quotas and costs.
+Claude desktop chat history is not scanned.
 
 ## Requirements
 
@@ -39,6 +39,8 @@ do not report subscription quotas. Claude desktop chat history is not scanned.
   `~/.claude/projects` for local activity charts.
 - For live Codex account limits, [Codex CLI](https://developers.openai.com/codex/cli)
   installed and authenticated with `codex login`.
+- For live Claude limits, Claude Code signed in with `claude auth login`. No API key is needed.
+  An inference-only `claude setup-token` cannot read plan limits.
 
 If Codex uses a different data directory, launch with `CODEX_HOME` set to that directory. If the
 CLI is installed in a custom location, set `CODEX_BINARY` to the executable's absolute path.
@@ -82,11 +84,23 @@ Release artifacts are written to `apps/codex-usage/release`.
 ## Data sources
 
 - Local activity: Codex session JSONL files and Claude Code project JSONL files.
-- Account limits: the local Codex CLI app-server session.
+- Codex limits: the local Codex CLI app-server session.
+- Claude limits: Anthropic's OAuth usage endpoint, using the selected Claude Code profile's native
+  Keychain credential or `.credentials.json`. macOS may ask to allow access to
+  `Claude Code-credentials`. Credentials stay in the main process and are sent only to Anthropic;
+  they are not copied to app settings, logs, or renderer data. The app never refreshes or modifies
+  Claude Code's rotating tokens and never sends inference requests.
 - Token pricing: LiteLLM pricing data with a local cache.
 - Floating exchange rates: Frankfurter reference rates with a local cache and last-known fallback.
 
 The app does not require an exchange-rate API key.
+
+Claude limits refresh every five minutes, or when you click Refresh. Missing windows remain
+unavailable instead of being inferred from local costs. If sign-in expires, open Claude Code to
+renew it and refresh the app. Temporary failures preserve timestamped last-known values; an
+asterisk in the status item marks stale quotas. Authentication failures clear those quotas.
+The Claude usage endpoint is not a public API contract and can change; failures do not prevent
+local activity or Codex usage from loading.
 
 ### Understanding cost estimates
 

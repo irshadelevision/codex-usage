@@ -19,6 +19,7 @@ import { ExchangeRateReader } from "./main/exchangeRates.ts";
 import { MENU_BAR_POPOVER_HEIGHT, MenuBarController } from "./main/menuBar.ts";
 import { PreferencesStore } from "./main/preferences.ts";
 import { CodexRateLimitReader } from "./main/rateLimits.ts";
+import { ClaudeRateLimitReader, readClaudeCredential } from "./main/claudeRateLimits.ts";
 import { CodexUsageScanner } from "./main/scanner.ts";
 import {
   checkForUpdates,
@@ -61,6 +62,9 @@ const exchangeRateReader = new ExchangeRateReader(
   NodePath.join(userDataPath, "currency-rates.json"),
 );
 const rateLimitReader = new CodexRateLimitReader(app.getPath("home"), app.getVersion());
+const claudeRateLimitReader = new ClaudeRateLimitReader({
+  credential: () => readClaudeCredential(app.getPath("home")),
+});
 const scanner = new CodexUsageScanner({
   sessionsPath,
   claudeProjectsPath: NodePath.join(
@@ -104,9 +108,15 @@ async function refreshUsage(forceExchangeRates = false): Promise<UsageSnapshot> 
     scanner.scan(nowMs),
     rateLimitReader.read(nowMs),
     exchangeRateReader.read(nowMs, forceExchangeRates),
+    claudeRateLimitReader.read(nowMs, forceExchangeRates),
   ])
-    .then(([usage, rateLimits, exchangeRates]) => {
-      const snapshot = { ...usage, exchangeRates, rateLimits } satisfies UsageSnapshot;
+    .then(([usage, rateLimits, exchangeRates, claudeRateLimits]) => {
+      const snapshot = {
+        ...usage,
+        exchangeRates,
+        rateLimits,
+        claudeRateLimits,
+      } satisfies UsageSnapshot;
       latestSnapshot = snapshot;
       menuBar.sync(snapshot, preferences.get());
       broadcast("usage:snapshot", snapshot);

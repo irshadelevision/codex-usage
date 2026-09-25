@@ -101,7 +101,6 @@ export function formatRateLimitStatus(
       : display === "usage-date"
         ? formatResetDateCompact(limit.resetsAt)
         : formatMenuBarReset(limit.resetsAt, nowMs);
-  if (suffix === "—") return "—";
   return display === "time-date" ? suffix : `${usage} · ${suffix}`;
 }
 

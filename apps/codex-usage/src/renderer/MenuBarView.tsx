@@ -47,7 +47,7 @@ function errorMessage(cause: unknown): string {
 
 function planLabel(snapshot: UsageSnapshot): string {
   const { planType, status } = snapshot.rateLimits;
-  if (status === "stale") return "Last known";
+  if (status === "stale") return `Last known · ${formatUpdatedAt(snapshot.rateLimits.readAt)}`;
   if (planType === null) return "Codex plan";
   return `${planType.replaceAll("_", " ")} plan`;
 }
@@ -333,7 +333,7 @@ export function MenuBarView() {
         )}
 
         <fieldset className="menu-provider-switcher">
-          <legend className="sr-only">Activity provider</legend>
+          <legend className="sr-only">Activity and limits provider</legend>
           {USAGE_PROVIDERS.map((provider) => (
             <button
               key={provider}
@@ -346,185 +346,218 @@ export function MenuBarView() {
           ))}
         </fieldset>
 
-        <section className="menu-activity-section" aria-labelledby="menu-activity-heading">
-          <div className="menu-section-heading">
-            <h2 id="menu-activity-heading">{rangeLabel(activityRange)} activity</h2>
-            <span>{formatCount(summary.records)} responses</span>
-          </div>
-          <div className="menu-activity-metrics">
-            <div>
-              <span>{summary.unpricedRecords > 0 ? "Cost (partial)" : "API estimate"}</span>
-              <strong>{activityCost(summary, preferences.currency, snapshot.exchangeRates)}</strong>
-            </div>
-            <div>
-              <span>Tokens</span>
-              <strong>{formatTokens(summary.totalTokens)}</strong>
-            </div>
-            <div>
-              <span>Sessions</span>
-              <strong>{formatCount(summary.sessions)}</strong>
-            </div>
-          </div>
-          <div className="menu-activity-context">
-            <span>
-              Top model <strong>{topModel}</strong>
-            </span>
-            <span>
-              Mode <strong>{topMode === undefined ? "No activity" : formatMode(topMode)}</strong>
-            </span>
-          </div>
-          {preferences.usageProvider === "all" ? (
-            <div className="menu-provider-breakdown" aria-label="Activity by provider">
-              {(
-                [
-                  ["Codex", codexSummary],
-                  ["Claude", claudeSummary],
-                ] as const
-              ).map(([label, source]) => (
-                <div key={label}>
-                  <span>{label}</span>
-                  <span>
-                    {formatCount(source.records)} responses · {formatTokens(source.totalTokens)}{" "}
-                    tokens
-                  </span>
-                  <strong>
-                    {activityCost(source, preferences.currency, snapshot.exchangeRates)}
-                  </strong>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {preferences.usageProvider !== "codex" && claudeSummary.records === 0 ? (
-            <p className="menu-activity-note">
-              No Claude Code activity in this range. Local source:{" "}
-              {snapshot.claudeSourcePath ?? "~/.claude/projects"}.
-            </p>
-          ) : null}
-        </section>
-
-        {preferences.usageProvider === "claude" ? (
-          <p className="menu-limits-note">
-            Claude plan limits are not reported in local session files.
-          </p>
-        ) : (
-          <section className="menu-weekly-section" aria-labelledby="menu-limits-heading">
+        <div className="menu-bar-content">
+          <section className="menu-activity-section" aria-labelledby="menu-activity-heading">
             <div className="menu-section-heading">
-              <h2 id="menu-limits-heading">Codex limits</h2>
-              <span>{planLabel(snapshot)}</span>
+              <h2 id="menu-activity-heading">{rangeLabel(activityRange)} activity</h2>
+              <span>{formatCount(summary.records)} responses</span>
             </div>
-            {snapshot.rateLimits.codexFiveHour === null ? null : (
-              <LimitRow
-                label="Codex 5-hour"
-                limit={snapshot.rateLimits.codexFiveHour}
-                nowMs={nowMs}
-              />
-            )}
-            <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
-            {snapshot.rateLimits.resetCredits === null ? null : (
-              <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
-            )}
+            <div className="menu-activity-metrics">
+              <div>
+                <span>{summary.unpricedRecords > 0 ? "Cost (partial)" : "API estimate"}</span>
+                <strong>
+                  {activityCost(summary, preferences.currency, snapshot.exchangeRates)}
+                </strong>
+              </div>
+              <div>
+                <span>Tokens</span>
+                <strong>{formatTokens(summary.totalTokens)}</strong>
+              </div>
+              <div>
+                <span>Sessions</span>
+                <strong>{formatCount(summary.sessions)}</strong>
+              </div>
+            </div>
+            <div className="menu-activity-context">
+              <span>
+                Top model <strong>{topModel}</strong>
+              </span>
+              <span>
+                Mode <strong>{topMode === undefined ? "No activity" : formatMode(topMode)}</strong>
+              </span>
+            </div>
+            {preferences.usageProvider === "all" ? (
+              <div className="menu-provider-breakdown" aria-label="Activity by provider">
+                {(
+                  [
+                    ["Codex", codexSummary],
+                    ["Claude", claudeSummary],
+                  ] as const
+                ).map(([label, source]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <span>
+                      {formatCount(source.records)} responses · {formatTokens(source.totalTokens)}{" "}
+                      tokens
+                    </span>
+                    <strong>
+                      {activityCost(source, preferences.currency, snapshot.exchangeRates)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {preferences.usageProvider !== "codex" && claudeSummary.records === 0 ? (
+              <p className="menu-activity-note">
+                No Claude Code activity in this range. Local source:{" "}
+                {snapshot.claudeSourcePath ?? "~/.claude/projects"}.
+              </p>
+            ) : null}
           </section>
-        )}
 
-        <section className="menu-preferences-section" aria-labelledby="menu-preferences-heading">
-          <div className="menu-section-heading menu-preferences-heading">
-            <h2 id="menu-preferences-heading">
-              <Settings2Icon size={13} /> Menu bar
-            </h2>
-            <span>Activity and status</span>
-          </div>
-          <label className="menu-display-field">
-            <span>Currency</span>
-            <select
-              value={preferences.currency}
-              onChange={(event) =>
-                updatePreferences({ currency: event.target.value as UsageCurrency })
-              }
-            >
-              {USAGE_CURRENCY_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.currencies.map((currency) => (
-                    <option key={currency} value={currency}>
-                      {USAGE_CURRENCY_LABELS[currency]}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-          <p className="menu-currency-note">
-            {usageCurrencyRateNote(preferences.currency, snapshot.exchangeRates)}
-          </p>
-          <label className="menu-display-field">
-            <span>Displayed value</span>
-            <select
-              value={preferences.menuBarDisplay}
-              onChange={(event) =>
-                updatePreferences({ menuBarDisplay: event.target.value as MenuBarDisplay })
-              }
-            >
-              {MENU_BAR_DISPLAYS.map((display) => (
-                <option key={display} value={display}>
-                  {MENU_BAR_DISPLAY_LABELS[display]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="menu-range-field">
-            <span>Activity</span>
-            <fieldset>
-              <legend className="sr-only">Dropdown activity range</legend>
-              {USAGE_RANGES.map((range) => (
-                <button
-                  key={range}
-                  type="button"
-                  aria-pressed={preferences.menuBarActivityRange === range}
-                  onClick={() => updatePreferences({ menuBarActivityRange: range })}
-                >
-                  {rangeLabel(range)}
-                </button>
-              ))}
-            </fieldset>
-          </div>
-          <div className={`menu-range-field${statusRangeEnabled ? "" : " disabled"}`}>
-            <span>Status range</span>
-            <fieldset disabled={!statusRangeEnabled}>
-              <legend className="sr-only">Status item range</legend>
-              {USAGE_RANGES.map((range) => (
-                <button
-                  key={range}
-                  type="button"
-                  aria-pressed={displayedStatusRange === range}
-                  onClick={() => updatePreferences({ menuBarRange: range })}
-                >
-                  {rangeLabel(range)}
-                </button>
-              ))}
-            </fieldset>
-          </div>
-          <div className="menu-toggle-list">
-            <MenuToggle
-              label="Menu bar icon"
-              detail="Show the Codex Usage mark"
-              checked={preferences.showMenuBarIcon || preferences.menuBarDisplay === "icon-only"}
-              disabled={preferences.menuBarDisplay === "icon-only"}
-              onChange={(showMenuBarIcon) => updatePreferences({ showMenuBarIcon })}
-            />
-            <MenuToggle
-              label="Launch at login"
-              detail="Keep usage close at hand"
-              checked={preferences.launchAtLogin}
-              onChange={(launchAtLogin) => updatePreferences({ launchAtLogin })}
-            />
-            <MenuToggle
-              label="Show in menu bar"
-              detail="Turn off the status item"
-              checked={preferences.showInMenuBar}
-              onChange={(showInMenuBar) => updatePreferences({ showInMenuBar })}
-            />
-          </div>
-        </section>
+          {preferences.usageProvider === "claude" ? null : (
+            <section className="menu-weekly-section" aria-labelledby="menu-limits-heading">
+              <div className="menu-section-heading">
+                <h2 id="menu-limits-heading">Codex limits</h2>
+                <span>{planLabel(snapshot)}</span>
+              </div>
+              {snapshot.rateLimits.codexFiveHour === null ? null : (
+                <LimitRow
+                  label="Codex 5-hour"
+                  limit={snapshot.rateLimits.codexFiveHour}
+                  nowMs={nowMs}
+                />
+              )}
+              <LimitRow label="Codex weekly" limit={snapshot.rateLimits.codex} nowMs={nowMs} />
+              {snapshot.rateLimits.resetCredits === null ? null : (
+                <ResetCreditRow resetCredits={snapshot.rateLimits.resetCredits} nowMs={nowMs} />
+              )}
+              {snapshot.rateLimits.message ? (
+                <p className="menu-activity-note">{snapshot.rateLimits.message}</p>
+              ) : null}
+            </section>
+          )}
 
+          {preferences.usageProvider === "codex" ? null : (
+            <section className="menu-weekly-section" aria-labelledby="menu-claude-limits-heading">
+              <div className="menu-section-heading">
+                <h2 id="menu-claude-limits-heading">Claude limits</h2>
+                <span>
+                  {snapshot.claudeRateLimits.status === "stale"
+                    ? `Last known · ${formatUpdatedAt(snapshot.claudeRateLimits.readAt)}`
+                    : "Claude Code account"}
+                </span>
+              </div>
+              {snapshot.claudeRateLimits.fiveHour === null ? null : (
+                <LimitRow
+                  label="Claude 5-hour"
+                  limit={snapshot.claudeRateLimits.fiveHour}
+                  nowMs={nowMs}
+                />
+              )}
+              {snapshot.claudeRateLimits.weekly === null &&
+              snapshot.claudeRateLimits.fiveHour !== null ? null : (
+                <LimitRow
+                  label="Claude weekly"
+                  limit={snapshot.claudeRateLimits.weekly}
+                  nowMs={nowMs}
+                />
+              )}
+              {snapshot.claudeRateLimits.message ? (
+                <p className="menu-activity-note">{snapshot.claudeRateLimits.message}</p>
+              ) : null}
+            </section>
+          )}
+
+          <section className="menu-preferences-section" aria-labelledby="menu-preferences-heading">
+            <div className="menu-section-heading menu-preferences-heading">
+              <h2 id="menu-preferences-heading">
+                <Settings2Icon size={13} /> Menu bar
+              </h2>
+              <span>Activity and status</span>
+            </div>
+            <label className="menu-display-field">
+              <span>Currency</span>
+              <select
+                value={preferences.currency}
+                onChange={(event) =>
+                  updatePreferences({ currency: event.target.value as UsageCurrency })
+                }
+              >
+                {USAGE_CURRENCY_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.currencies.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {USAGE_CURRENCY_LABELS[currency]}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <p className="menu-currency-note">
+              {usageCurrencyRateNote(preferences.currency, snapshot.exchangeRates)}
+            </p>
+            <label className="menu-display-field">
+              <span>Displayed value</span>
+              <select
+                value={preferences.menuBarDisplay}
+                onChange={(event) =>
+                  updatePreferences({ menuBarDisplay: event.target.value as MenuBarDisplay })
+                }
+              >
+                {MENU_BAR_DISPLAYS.map((display) => (
+                  <option key={display} value={display}>
+                    {MENU_BAR_DISPLAY_LABELS[display]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="menu-range-field">
+              <span>Activity</span>
+              <fieldset>
+                <legend className="sr-only">Dropdown activity range</legend>
+                {USAGE_RANGES.map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    aria-pressed={preferences.menuBarActivityRange === range}
+                    onClick={() => updatePreferences({ menuBarActivityRange: range })}
+                  >
+                    {rangeLabel(range)}
+                  </button>
+                ))}
+              </fieldset>
+            </div>
+            <div className={`menu-range-field${statusRangeEnabled ? "" : " disabled"}`}>
+              <span>Status range</span>
+              <fieldset disabled={!statusRangeEnabled}>
+                <legend className="sr-only">Status item range</legend>
+                {USAGE_RANGES.map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    aria-pressed={displayedStatusRange === range}
+                    onClick={() => updatePreferences({ menuBarRange: range })}
+                  >
+                    {rangeLabel(range)}
+                  </button>
+                ))}
+              </fieldset>
+            </div>
+            <div className="menu-toggle-list">
+              <MenuToggle
+                label="Menu bar icon"
+                detail="Show the Codex Usage mark"
+                checked={preferences.showMenuBarIcon || preferences.menuBarDisplay === "icon-only"}
+                disabled={preferences.menuBarDisplay === "icon-only"}
+                onChange={(showMenuBarIcon) => updatePreferences({ showMenuBarIcon })}
+              />
+              <MenuToggle
+                label="Launch at login"
+                detail="Keep usage close at hand"
+                checked={preferences.launchAtLogin}
+                onChange={(launchAtLogin) => updatePreferences({ launchAtLogin })}
+              />
+              <MenuToggle
+                label="Show in menu bar"
+                detail="Turn off the status item"
+                checked={preferences.showInMenuBar}
+                onChange={(showInMenuBar) => updatePreferences({ showInMenuBar })}
+              />
+            </div>
+          </section>
+        </div>
         <MenuFooter onError={setError} />
       </div>
     </main>
