@@ -13,7 +13,10 @@ The app includes:
 - live Codex and Claude weekly usage, plus conditional 5-hour windows when reported by each account;
 - percentage remaining, reset countdowns, and reset dates for every reported usage window;
 - de-duplication for repeated token events and copied fork/subagent history;
-- LiteLLM pricing with a 24-hour offline cache;
+- LiteLLM pricing with a 24-hour offline cache and an on-demand price refresh;
+- persisted usage history after transcript cleanup, scoped to the selected source directories and
+  retained for the supported two-year custom-range window;
+- incremental reads of growing transcripts with safe replay of incomplete final records;
 - USD, AED, SAR, BHD, QAR, OMR, JOD, and HKD display currencies using configured peg rates
   (HKD uses the `7.80` midpoint of its supplied band);
 - 44 live currencies covering the Americas, Europe, Asia-Pacific, South Asia, the Middle East,
@@ -45,10 +48,16 @@ Missing windows are hidden; temporary failures show timestamped last-known value
 in the status item), while expired/rejected credentials show sign-in guidance. The usage endpoint
 is not a public API contract and can change. Claude desktop chat history is not scanned.
 Costs use current standard model rates, with unknown/ambiguous prices explicitly marked as
-unavailable or partial. Provider-specific rates cannot overwrite canonical model rates.
+unavailable or partial unless a valid provider-reported cost is available. Provider-specific rates
+cannot overwrite canonical model rates. Refresh checks for new prices with a one-minute minimum
+between successful downloads; offline refreshes keep last-known prices.
 Claude cache-read/write tokens, one-hour cache writes, fast-mode multipliers, recorded costs,
-and repeated message/request IDs are handled separately. Long-context and service tiers can
+and repeated message/request IDs are handled separately. Reported costs do not disable the
+published-rate cache-savings estimate. Moved/copied Codex sessions are counted once, without
+collapsing equal usage deltas from separate turns. Long-context and service tiers can
 differ from the standard-rate estimate.
+Only previously scanned usage can survive transcript deletion; the cache stores usage metadata,
+not conversation text, and files deleted before their first scan cannot be recovered.
 Currency refreshes request only the fixed supported-currency list from Frankfurter; session,
 token, and cost data never leave the Mac.
 

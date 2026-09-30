@@ -1,7 +1,6 @@
-import * as NodeFS from "node:fs";
+import * as NodeCrypto from "node:crypto";
 import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
-import * as NodeReadline from "node:readline";
 
 import type {
   RangeSummary,
@@ -13,14 +12,19 @@ import type {
   UsageProvider,
 } from "../shared/types.ts";
 import { USAGE_RANGES } from "../shared/types.ts";
-import { validateCustomRange, type CustomRange } from "../shared/customRange.ts";
+import {
+  earliestCustomDate,
+  validateCustomRange,
+  type CustomRange,
+} from "../shared/customRange.ts";
 import { loadRates, priceTokens, type RateTable } from "./pricing.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const MTIME_SLACK_MS = 36 * 60 * 60 * 1000;
 const FORK_COPY_MAX_GAP_MS = 1000;
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
+const TRANSCRIPT_GUARD_BYTES = 64;
 
 const EMPTY_TOTALS: TokenTotals = {
   uncachedInputTokens: 0,
@@ -62,6 +66,24 @@ interface ScanCacheEntry {
   readonly size: number;
   readonly mtimeMs: number;
   readonly records: readonly UsageRecord[];
+  readonly provider?: "codex" | "claude";
+  readonly tailRecords?: readonly UsageRecord[];
+  readonly position?: TranscriptPosition;
+}
+
+export interface TranscriptPosition {
+  readonly offset: number;
+  readonly guardHash: string;
+  readonly codexState: CodexScanState | null;
+}
+
+export interface TranscriptReadResult {
+  readonly records: readonly UsageRecord[];
+  readonly tailRecords: readonly UsageRecord[];
+  readonly position: TranscriptPosition;
+  readonly resumed: boolean;
+  readonly size: number;
+  readonly mtimeMs: number;
 }
 
 interface MutableBreakdown {
@@ -189,18 +211,6 @@ export function parseCodexLine(line: string, state: CodexScanState): UsageRecord
   const timestampMs = parseTimestampMs(record["timestamp"]);
   if (timestampMs === null || state.model.length === 0) return null;
 
-  const signature = `${state.model}\u0000${state.mode}\u0000${JSON.stringify(lastRecord)}`;
-  if (signature === state.lastUsageSignature) return null;
-  state.lastUsageSignature = signature;
-
-  if (state.suppressingForkCopies) {
-    if (timestampMs - state.forkCopyAnchorMs < FORK_COPY_MAX_GAP_MS) {
-      state.forkCopyAnchorMs = timestampMs;
-      return null;
-    }
-    state.suppressingForkCopies = false;
-  }
-
   const inputTokens = int(lastRecord["input_tokens"]);
   const cachedInputTokens = int(lastRecord["cached_input_tokens"]);
   const cacheCreationTokens = int(lastRecord["cache_write_input_tokens"]);
@@ -212,6 +222,18 @@ export function parseCodexLine(line: string, state: CodexScanState): UsageRecord
     outputTokens,
     reasoningTokens: Math.min(outputTokens, int(lastRecord["reasoning_output_tokens"])),
   };
+  // Persist only normalized usage metadata, never arbitrary transcript properties.
+  const signature = `${state.model}\u0000${state.mode}\u0000${JSON.stringify(totals)}`;
+  if (signature === state.lastUsageSignature) return null;
+  state.lastUsageSignature = signature;
+
+  if (state.suppressingForkCopies) {
+    if (timestampMs - state.forkCopyAnchorMs < FORK_COPY_MAX_GAP_MS) {
+      state.forkCopyAnchorMs = timestampMs;
+      return null;
+    }
+    state.suppressingForkCopies = false;
+  }
   if (totalTokens(totals) === 0) return null;
 
   return {
@@ -286,37 +308,102 @@ export function deduplicateUsage(records: readonly UsageRecord[]): UsageRecord[]
   });
 }
 
-async function readTranscript(
+async function transcriptGuard(handle: NodeFSP.FileHandle, offset: number): Promise<string> {
+  const length = Math.min(offset, TRANSCRIPT_GUARD_BYTES);
+  const buffer = Buffer.alloc(length);
+  const { bytesRead } = await handle.read(buffer, 0, length, offset - length);
+  if (bytesRead !== length) throw new Error("Transcript changed while scanning");
+  return NodeCrypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+/** Resume only newline-terminated records; an unfinished last line is replayed next time. */
+export async function readTranscript(
   filePath: string,
   provider: "codex" | "claude",
-): Promise<readonly UsageRecord[] | null> {
+  previous?: TranscriptPosition,
+): Promise<TranscriptReadResult | null> {
   const records: UsageRecord[] = [];
-  const state = initialCodexScanState();
+  let handle: NodeFSP.FileHandle | undefined;
   try {
-    const lines = NodeReadline.createInterface({
-      input: NodeFS.createReadStream(filePath, { encoding: "utf8" }),
-      crlfDelay: Infinity,
-    });
-    for await (const line of lines) {
+    handle = await NodeFSP.open(filePath, "r");
+    const stats = await handle.stat();
+    const resumed =
+      previous !== undefined &&
+      previous.offset <= stats.size &&
+      (provider === "codex" ? previous.codexState !== null : previous.codexState === null) &&
+      (await transcriptGuard(handle, previous.offset)) === previous.guardHash;
+    const state =
+      resumed && previous?.codexState ? { ...previous.codexState } : initialCodexScanState();
+    const parseLine = (line: string, scanState: CodexScanState): UsageRecord | null => {
       if (provider === "claude") {
-        if (!line.includes('"usage"')) continue;
+        if (!line.includes('"usage"')) return null;
         const record = parseClaudeLine(line);
-        if (record !== null) records.push({ ...record, sessionId: record.sessionId || filePath });
-        continue;
+        return record === null ? null : { ...record, sessionId: record.sessionId || filePath };
       }
       if (
         !line.includes('"token_count"') &&
         !line.includes('"turn_context"') &&
         !line.includes('"session_meta"')
       ) {
-        continue;
+        return null;
       }
-      const record = parseCodexLine(line, state);
-      if (record !== null) records.push({ ...record, sessionId: record.sessionId || filePath });
+      const record = parseCodexLine(line, scanState);
+      return record === null ? null : { ...record, sessionId: record.sessionId || filePath };
+    };
+
+    let offset = resumed ? previous!.offset : 0;
+    let pending: Buffer[] = [];
+    let pendingLength = 0;
+    if (offset < stats.size) {
+      // Bound the stream to this snapshot so bytes appended during the read are scanned later.
+      const stream = handle.createReadStream({
+        start: offset,
+        end: stats.size - 1,
+        autoClose: false,
+        highWaterMark: 256 * 1024,
+      });
+      for await (const chunk of stream as AsyncIterable<Buffer>) {
+        let start = 0;
+        for (let end = chunk.indexOf(10, start); end !== -1; end = chunk.indexOf(10, start)) {
+          const part = chunk.subarray(start, end);
+          const line =
+            pendingLength === 0
+              ? part.toString("utf8")
+              : Buffer.concat([...pending, part], pendingLength + part.length).toString("utf8");
+          const record = parseLine(line, state);
+          if (record !== null) records.push(record);
+          offset += pendingLength + part.length + 1;
+          pending = [];
+          pendingLength = 0;
+          start = end + 1;
+        }
+        if (start < chunk.length) {
+          const part = chunk.subarray(start);
+          pending.push(part);
+          pendingLength += part.length;
+        }
+      }
     }
-    return records;
+    const tail =
+      pendingLength > 0
+        ? parseLine(Buffer.concat(pending, pendingLength).toString("utf8"), { ...state })
+        : null;
+    return {
+      records,
+      tailRecords: tail === null ? [] : [tail],
+      resumed,
+      size: stats.size,
+      mtimeMs: stats.mtimeMs,
+      position: {
+        offset,
+        guardHash: await transcriptGuard(handle, offset),
+        codexState: provider === "codex" ? state : null,
+      },
+    };
   } catch {
     return null;
+  } finally {
+    await handle?.close().catch(() => undefined);
   }
 }
 
@@ -378,7 +465,40 @@ function isUsageRecord(value: unknown): value is UsageRecord {
     (record["dedupeKey"] === undefined ||
       record["dedupeKey"] === null ||
       typeof record["dedupeKey"] === "string") &&
+    (record["fast"] === undefined || typeof record["fast"] === "boolean") &&
+    (record["reportedCostUsd"] === undefined ||
+      record["reportedCostUsd"] === null ||
+      (typeof record["reportedCostUsd"] === "number" &&
+        Number.isFinite(record["reportedCostUsd"]) &&
+        record["reportedCostUsd"] >= 0)) &&
     isTokenTotals(record["totals"])
+  );
+}
+
+function isTranscriptPosition(value: unknown, size: number): value is TranscriptPosition {
+  if (typeof value !== "object" || value === null) return false;
+  const position = value as Record<string, unknown>;
+  if (
+    typeof position["offset"] !== "number" ||
+    !Number.isSafeInteger(position["offset"]) ||
+    position["offset"] < 0 ||
+    position["offset"] > size ||
+    typeof position["guardHash"] !== "string" ||
+    !/^[a-f0-9]{64}$/.test(position["guardHash"])
+  )
+    return false;
+  if (position["codexState"] === null) return true;
+  if (typeof position["codexState"] !== "object" || position["codexState"] === null) return false;
+  const state = position["codexState"] as Record<string, unknown>;
+  return (
+    typeof state["model"] === "string" &&
+    typeof state["mode"] === "string" &&
+    typeof state["sessionId"] === "string" &&
+    (state["lastUsageSignature"] === null || typeof state["lastUsageSignature"] === "string") &&
+    typeof state["sawSessionMeta"] === "boolean" &&
+    typeof state["suppressingForkCopies"] === "boolean" &&
+    typeof state["forkCopyAnchorMs"] === "number" &&
+    Number.isFinite(state["forkCopyAnchorMs"])
   );
 }
 
@@ -387,7 +507,12 @@ async function readScanCache(cachePath: string): Promise<Map<string, ScanCacheEn
     const parsed: unknown = JSON.parse(await NodeFSP.readFile(cachePath, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return new Map();
     const root = parsed as Record<string, unknown>;
-    if (root["version"] !== CACHE_VERSION || !Array.isArray(root["entries"])) return new Map();
+    // Version 3 still contains useful history, but must be fully read before resuming.
+    if (
+      (root["version"] !== 3 && root["version"] !== CACHE_VERSION) ||
+      !Array.isArray(root["entries"])
+    )
+      return new Map();
     const entries = new Map<string, ScanCacheEntry>();
     for (const value of root["entries"]) {
       if (!Array.isArray(value) || value.length !== 2 || typeof value[0] !== "string") continue;
@@ -396,7 +521,11 @@ async function readScanCache(cachePath: string): Promise<Map<string, ScanCacheEn
       const entry = raw as Record<string, unknown>;
       if (
         typeof entry["size"] !== "number" ||
+        !Number.isSafeInteger(entry["size"]) ||
+        entry["size"] < 0 ||
         typeof entry["mtimeMs"] !== "number" ||
+        !Number.isFinite(entry["mtimeMs"]) ||
+        entry["mtimeMs"] < 0 ||
         !Array.isArray(entry["records"]) ||
         !entry["records"].every(isUsageRecord)
       ) {
@@ -406,6 +535,16 @@ async function readScanCache(cachePath: string): Promise<Map<string, ScanCacheEn
         size: entry["size"],
         mtimeMs: entry["mtimeMs"],
         records: entry["records"],
+        ...(entry["provider"] === "codex" || entry["provider"] === "claude"
+          ? { provider: entry["provider"] }
+          : {}),
+        ...(Array.isArray(entry["tailRecords"]) && entry["tailRecords"].every(isUsageRecord)
+          ? { tailRecords: entry["tailRecords"] }
+          : {}),
+        ...(root["version"] === CACHE_VERSION &&
+        isTranscriptPosition(entry["position"], entry["size"])
+          ? { position: entry["position"] }
+          : {}),
       });
     }
     return entries;
@@ -415,11 +554,48 @@ async function readScanCache(cachePath: string): Promise<Map<string, ScanCacheEn
 }
 
 async function writeScanCache(cachePath: string, cache: ReadonlyMap<string, ScanCacheEntry>) {
+  const temporaryPath = `${cachePath}.tmp`;
   await NodeFSP.writeFile(
-    cachePath,
+    temporaryPath,
     JSON.stringify({ version: CACHE_VERSION, entries: [...cache.entries()] }),
     "utf8",
   );
+  await NodeFSP.rename(temporaryPath, cachePath);
+}
+
+function withinSource(filePath: string, root: string): boolean {
+  const relative = NodePath.relative(NodePath.resolve(root), NodePath.resolve(filePath));
+  return (
+    relative !== "" &&
+    relative !== ".." &&
+    !relative.startsWith(`..${NodePath.sep}`) &&
+    !NodePath.isAbsolute(relative)
+  );
+}
+
+/** Stable session events survive file moves, while equal deltas in distinct turns remain distinct. */
+function appendTranscriptRecords(destination: UsageRecord[], entry: ScanCacheEntry): void {
+  const occurrences = new Map<string, number>();
+  for (const record of [...entry.records, ...(entry.tailRecords ?? [])]) {
+    if (record.provider !== "codex") {
+      destination.push(record);
+      continue;
+    }
+    const key = JSON.stringify([
+      record.sessionId,
+      record.timestampMs,
+      record.model,
+      record.mode,
+      record.totals.uncachedInputTokens,
+      record.totals.cachedInputTokens,
+      record.totals.cacheCreationTokens,
+      record.totals.outputTokens,
+      record.totals.reasoningTokens,
+    ]);
+    const occurrence = (occurrences.get(key) ?? 0) + 1;
+    occurrences.set(key, occurrence);
+    destination.push({ ...record, dedupeKey: `${key}:${occurrence}` });
+  }
 }
 
 function makeDayFormatter(timeZone: string): (timestampMs: number) => string {
@@ -632,6 +808,7 @@ export class CodexUsageScanner {
   readonly #scanCachePath: string;
   readonly #ratesCachePath: string;
   #cache: Map<string, ScanCacheEntry> | null = null;
+  #cacheDirty = false;
 
   constructor(input: {
     readonly sessionsPath: string;
@@ -651,9 +828,10 @@ export class CodexUsageScanner {
     nowMs = Date.now(),
     custom?: CustomRange,
     provider: UsageProvider = "all",
+    forceRates = false,
   ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits" | "claudeRateLimits">> {
     const checked = custom ? validateCustomRange(custom, nowMs) : undefined;
-    const result = this.#queue.then(() => this.#scan(nowMs, checked, provider));
+    const result = this.#queue.then(() => this.#scan(nowMs, checked, provider, forceRates));
     this.#queue = result.catch(() => undefined);
     return result;
   }
@@ -662,9 +840,13 @@ export class CodexUsageScanner {
     nowMs: number,
     custom?: CustomRange,
     provider: UsageProvider = "all",
+    forceRates = false,
   ): Promise<Omit<UsageSnapshot, "exchangeRates" | "rateLimits" | "claudeRateLimits">> {
     const startedAt = Date.now();
-    if (this.#cache === null) this.#cache = await readScanCache(this.#scanCachePath);
+    if (this.#cache === null) {
+      this.#cache = await readScanCache(this.#scanCachePath);
+      this.#cacheDirty = this.#cache.size > 0;
+    }
 
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     const untilDay = makeDayFormatter(timeZone)(nowMs);
@@ -672,8 +854,9 @@ export class CodexUsageScanner {
     const earliestMs =
       Math.min(Date.parse(`${sinceDay}T00:00:00Z`), custom ? Date.parse(custom.start) : Infinity) -
       MTIME_SLACK_MS;
+    const retentionMs = earliestCustomDate(nowMs).getTime() - MTIME_SLACK_MS;
     const [pricing, codexFiles, claudeFiles] = await Promise.all([
-      loadRates(this.#ratesCachePath, nowMs),
+      loadRates(this.#ratesCachePath, nowMs, { force: forceRates }),
       listTranscriptFiles(this.#sessionsPath, earliestMs),
       this.#claudeProjectsPath ? listTranscriptFiles(this.#claudeProjectsPath, earliestMs) : [],
     ]);
@@ -686,39 +869,84 @@ export class CodexUsageScanner {
     const livePaths = new Set<string>();
     let scannedFiles = 0;
     let skippedFiles = 0;
-    let cacheChanged = false;
 
     for (const file of files) {
       livePaths.add(file.path);
-      const cached = this.#cache.get(file.path);
+      const held = this.#cache.get(file.path);
+      const cached =
+        held &&
+        (held.provider === undefined || held.provider === file.provider) &&
+        [...held.records, ...(held.tailRecords ?? [])].every(
+          (record) => record.provider === file.provider,
+        )
+          ? held
+          : undefined;
       if (cached?.size === file.size && cached.mtimeMs === file.mtimeMs) {
-        for (const record of cached.records) records.push(record);
-        if (cached.records.length === 0) skippedFiles += 1;
+        appendTranscriptRecords(records, cached);
+        if (cached.records.length + (cached.tailRecords?.length ?? 0) === 0) skippedFiles += 1;
         else scannedFiles += 1;
         continue;
       }
 
-      const parsed = await readTranscript(file.path, file.provider);
+      const parsed = await readTranscript(
+        file.path,
+        file.provider,
+        cached && file.size > cached.size ? cached.position : undefined,
+      );
       if (parsed === null) {
+        // A temporary read failure must not erase the last successful result.
+        if (cached) appendTranscriptRecords(records, cached);
         skippedFiles += 1;
         continue;
       }
-      this.#cache.set(file.path, { size: file.size, mtimeMs: file.mtimeMs, records: parsed });
-      cacheChanged = true;
-      for (const record of parsed) records.push(record);
-      if (parsed.length === 0) skippedFiles += 1;
+      const entry: ScanCacheEntry = {
+        provider: file.provider,
+        size: parsed.size,
+        mtimeMs: parsed.mtimeMs,
+        records: deduplicateUsage(
+          parsed.resumed && cached ? [...cached.records, ...parsed.records] : parsed.records,
+        ),
+        tailRecords: parsed.tailRecords,
+        position: parsed.position,
+      };
+      this.#cache.set(file.path, entry);
+      this.#cacheDirty = true;
+      appendTranscriptRecords(records, entry);
+      if (entry.records.length + (entry.tailRecords?.length ?? 0) === 0) skippedFiles += 1;
       else scannedFiles += 1;
     }
 
-    for (const path of this.#cache.keys()) {
-      if (!livePaths.has(path)) {
-        if ((this.#cache.get(path)?.mtimeMs ?? 0) < earliestMs) continue;
+    for (const [path, cached] of this.#cache) {
+      if (cached.mtimeMs < retentionMs) {
         this.#cache.delete(path);
-        cacheChanged = true;
+        this.#cacheDirty = true;
+        continue;
+      }
+      if (!livePaths.has(path)) {
+        // Keep history after transcript cleanup, but never import another account's source cache.
+        const provider = withinSource(path, this.#sessionsPath)
+          ? "codex"
+          : this.#claudeProjectsPath && withinSource(path, this.#claudeProjectsPath)
+            ? "claude"
+            : null;
+        if (provider === null || (cached.provider !== undefined && cached.provider !== provider))
+          continue;
+        const selected = {
+          ...cached,
+          records: cached.records.filter((record) => record.provider === provider),
+          tailRecords: (cached.tailRecords ?? []).filter((record) => record.provider === provider),
+        };
+        appendTranscriptRecords(records, selected);
+        if (selected.records.length + (selected.tailRecords?.length ?? 0) > 0) scannedFiles += 1;
       }
     }
-    if (cacheChanged) {
-      await writeScanCache(this.#scanCachePath, this.#cache).catch(() => undefined);
+    if (this.#cacheDirty) {
+      try {
+        await writeScanCache(this.#scanCachePath, this.#cache);
+        this.#cacheDirty = false;
+      } catch {
+        // Retry on the next scan even if no transcript has changed.
+      }
     }
 
     const uniqueRecords = deduplicateUsage(records);

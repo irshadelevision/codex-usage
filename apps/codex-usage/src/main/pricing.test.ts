@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vite-plus/test";
+import * as NodeFSP from "node:fs/promises";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { parseRateTable, priceTokens } from "./pricing.ts";
+import { loadRates, parseRateTable, priceTokens } from "./pricing.ts";
 
 describe("usage pricing", () => {
   const tokens = {
@@ -69,7 +72,7 @@ describe("usage pricing", () => {
     expect(result.cacheSavingsUsd).toBeCloseTo(200 * 2.7 * 6e-6, 10);
   });
 
-  it("prefers recorded cost but rejects invalid costs and synthetic/family models", () => {
+  it("prefers recorded cost but rejects invalid costs and synthetic models", () => {
     expect(
       priceTokens(new Map(), "claude-example", tokens, { reportedCostUsd: 0.12 }).costUsd,
     ).toBe(0.12);
@@ -81,9 +84,40 @@ describe("usage pricing", () => {
         priceTokens(new Map(), "claude-example", tokens, { reportedCostUsd: cost }).priced,
       ).toBe(false);
     }
-    for (const model of ["<synthetic>", "opus", "anthropic/sonnet"]) {
+    for (const model of ["<synthetic>", "synthetic"]) {
       expect(priceTokens(new Map(), model, tokens, { reportedCostUsd: 1 }).priced).toBe(false);
     }
+    for (const model of ["opus", "anthropic/sonnet", "future-model"]) {
+      expect(priceTokens(new Map(), model, tokens).priced).toBe(false);
+      expect(priceTokens(new Map(), model, tokens, { reportedCostUsd: 1 })).toEqual({
+        costUsd: 1,
+        cacheSavingsUsd: 0,
+        priced: true,
+      });
+    }
+  });
+
+  it("preserves estimated cache savings without multiplying a reported fast-mode cost", () => {
+    const table = parseRateTable({
+      "claude-example": {
+        input_cost_per_token: 3e-6,
+        output_cost_per_token: 15e-6,
+        cache_read_input_token_cost: 0.3e-6,
+        provider_specific_entry: { fast: 6 },
+      },
+    });
+    const result = priceTokens(
+      table,
+      "claude-example",
+      { ...tokens, cachedInputTokens: 200 },
+      {
+        fast: true,
+        reportedCostUsd: 0.12,
+      },
+    );
+    expect(result.costUsd).toBe(0.12);
+    expect(result.cacheSavingsUsd).toBeCloseTo(200 * 2.7 * 6e-6, 10);
+    expect(result.priced).toBe(true);
   });
 
   it("normalizes provider-prefixed models and prices every token class", () => {
@@ -128,5 +162,65 @@ describe("usage pricing", () => {
     });
 
     expect(rates.size).toBe(0);
+  });
+});
+
+describe("pricing refresh", () => {
+  let directory: string;
+  const now = Date.parse("2026-09-30T12:00:00Z");
+  const document = { example: { input_cost_per_token: 1e-6, output_cost_per_token: 2e-6 } };
+  beforeEach(async () => {
+    directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "usage-prices-"));
+  });
+  afterEach(async () => {
+    await NodeFSP.rm(directory, { recursive: true, force: true });
+  });
+  const cache = () => NodePath.join(directory, "rates.json");
+  const writeCache = (ageMs: number) =>
+    NodeFSP.writeFile(
+      cache(),
+      JSON.stringify({
+        fetchedAtMs: now - ageMs,
+        document,
+      }),
+    );
+
+  it("keeps the daily cache for automatic scans but updates it on manual refresh", async () => {
+    await writeCache(2 * 60_000);
+    const fetchRates = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        example: { input_cost_per_token: 3e-6, output_cost_per_token: 4e-6 },
+      }),
+    );
+    expect((await loadRates(cache(), now, { fetchRates })).status).toBe("cached");
+    expect(fetchRates).not.toHaveBeenCalled();
+    const result = await loadRates(cache(), now, { force: true, fetchRates });
+    expect(result.status).toBe("fresh");
+    expect(result.rates.get("example")?.inputCostPerToken).toBe(3e-6);
+    expect(fetchRates).toHaveBeenCalledOnce();
+    const reloaded = await loadRates(cache(), now + 30_000, { force: true, fetchRates });
+    expect(reloaded.status).toBe("cached");
+    expect(reloaded.rates.get("example")?.inputCostPerToken).toBe(3e-6);
+    expect(fetchRates).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to last-known prices when a forced request fails", async () => {
+    await writeCache(2 * 60_000);
+    const fetchRates = vi.fn<typeof fetch>().mockRejectedValue(new Error("offline"));
+    const result = await loadRates(cache(), now, { force: true, fetchRates });
+    expect(result).toMatchObject({ status: "cached", fetchedAtMs: now - 2 * 60_000 });
+    expect(result.rates.get("example")?.inputCostPerToken).toBe(1e-6);
+    expect(fetchRates).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes an expired cache and ignores unusable cache timestamps", async () => {
+    const fetchRates = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => Response.json(document));
+    await writeCache(24 * 60 * 60_000);
+    expect((await loadRates(cache(), now, { fetchRates })).status).toBe("fresh");
+    await NodeFSP.writeFile(cache(), JSON.stringify({ fetchedAtMs: "invalid", document }));
+    expect((await loadRates(cache(), now, { fetchRates })).status).toBe("fresh");
+    expect(fetchRates).toHaveBeenCalledTimes(2);
   });
 });

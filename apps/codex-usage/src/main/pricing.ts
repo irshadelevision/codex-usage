@@ -5,6 +5,7 @@ import type { PricingStatus, TokenTotals } from "../shared/types.ts";
 const RATES_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 const RATES_TTL_MS = 24 * 60 * 60 * 1000;
+const RATES_REFRESH_FLOOR_MS = 60 * 1000;
 
 export interface ModelRate {
   readonly inputCostPerToken: number;
@@ -83,8 +84,9 @@ export function parseRateTable(document: unknown): RateTable {
 function decodeCache(value: unknown): RateCache | null {
   if (typeof value !== "object" || value === null) return null;
   const record = value as Record<string, unknown>;
-  if (typeof record["fetchedAtMs"] !== "number" || !("document" in record)) return null;
-  return { fetchedAtMs: record["fetchedAtMs"], document: record["document"] };
+  const fetchedAtMs = finiteNumber(record["fetchedAtMs"]);
+  if (fetchedAtMs === null || !("document" in record)) return null;
+  return { fetchedAtMs, document: record["document"] };
 }
 
 async function readCache(cachePath: string): Promise<RateCache | null> {
@@ -95,16 +97,23 @@ async function readCache(cachePath: string): Promise<RateCache | null> {
   }
 }
 
-export async function loadRates(cachePath: string, nowMs: number): Promise<RateLoadResult> {
+export async function loadRates(
+  cachePath: string,
+  nowMs: number,
+  options: { readonly force?: boolean; readonly fetchRates?: typeof fetch } = {},
+): Promise<RateLoadResult> {
   const cached = await readCache(cachePath);
   const cachedRates =
     cached === null ? new Map<string, ModelRate>() : parseRateTable(cached.document);
-  if (cached !== null && cachedRates.size > 0 && nowMs - cached.fetchedAtMs < RATES_TTL_MS) {
+  const maxAge = options.force ? RATES_REFRESH_FLOOR_MS : RATES_TTL_MS;
+  if (cached !== null && cachedRates.size > 0 && nowMs - cached.fetchedAtMs < maxAge) {
     return { rates: cachedRates, status: "cached", fetchedAtMs: cached.fetchedAtMs };
   }
 
   try {
-    const response = await fetch(RATES_URL, { signal: AbortSignal.timeout(10_000) });
+    const response = await (options.fetchRates ?? fetch)(RATES_URL, {
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!response.ok) throw new Error(`Pricing request failed with ${response.status}`);
     const document: unknown = await response.json();
     const rates = parseRateTable(document);
@@ -140,24 +149,27 @@ export function priceTokens(
   options: { readonly fast?: boolean; readonly reportedCostUsd?: number | null } = {},
 ): { readonly costUsd: number; readonly cacheSavingsUsd: number; readonly priced: boolean } {
   const normalized = normalizeModelName(model).split("[")[0]!;
-  if (UNPRICEABLE_MODELS.has(normalized.slice(normalized.lastIndexOf("/") + 1))) {
+  const bare = normalized.slice(normalized.lastIndexOf("/") + 1);
+  if (bare === "<synthetic>" || bare === "synthetic") {
     return { costUsd: 0, cacheSavingsUsd: 0, priced: false };
   }
-  const rate = rates.get(normalized);
+  const rate = UNPRICEABLE_MODELS.has(bare) ? undefined : rates.get(normalized);
   const reported = finiteNumber(options.reportedCostUsd);
-  if (reported !== null) return { costUsd: reported, cacheSavingsUsd: 0, priced: true };
-  if (rate === undefined) return { costUsd: 0, cacheSavingsUsd: 0, priced: false };
+  if (rate === undefined) {
+    return { costUsd: reported ?? 0, cacheSavingsUsd: 0, priced: reported !== null };
+  }
   const multiplier = options.fast ? (rate.fastMultiplier ?? 1) : 1;
   const oneHour = Math.min(totals.cacheCreationTokens, totals.cacheCreationOneHourTokens ?? 0);
 
   return {
     costUsd:
+      reported ??
       (totals.uncachedInputTokens * rate.inputCostPerToken +
         totals.cachedInputTokens * rate.cacheReadCostPerToken +
         (totals.cacheCreationTokens - oneHour) * rate.cacheCreationCostPerToken +
         oneHour * (rate.cacheCreationOneHourCostPerToken ?? rate.cacheCreationCostPerToken) +
         totals.outputTokens * rate.outputCostPerToken) *
-      multiplier,
+        multiplier,
     cacheSavingsUsd: Math.max(
       0,
       totals.cachedInputTokens * (rate.inputCostPerToken - rate.cacheReadCostPerToken) * multiplier,

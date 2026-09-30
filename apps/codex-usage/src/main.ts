@@ -101,14 +101,14 @@ function openAboutWindowInBackground() {
   void createAboutWindow().catch(reportAboutWindowFailure);
 }
 
-async function refreshUsage(forceExchangeRates = false): Promise<UsageSnapshot> {
+async function refreshUsage(forceRefresh = false): Promise<UsageSnapshot> {
   if (refreshInFlight !== null) return refreshInFlight;
   const nowMs = Date.now();
   refreshInFlight = Promise.all([
-    scanner.scan(nowMs),
+    scanner.scan(nowMs, undefined, "all", forceRefresh),
     rateLimitReader.read(nowMs),
-    exchangeRateReader.read(nowMs, forceExchangeRates),
-    claudeRateLimitReader.read(nowMs, forceExchangeRates),
+    exchangeRateReader.read(nowMs, forceRefresh),
+    claudeRateLimitReader.read(nowMs, forceRefresh),
   ])
     .then(([usage, rateLimits, exchangeRates, claudeRateLimits]) => {
       const snapshot = {

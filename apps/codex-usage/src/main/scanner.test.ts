@@ -120,6 +120,27 @@ describe("parseCodexLine", () => {
     parseCodexLine(context, state);
     expect(parseCodexLine(second, state)).not.toBeNull();
   });
+
+  it("deduplicates normalized totals without preserving unrelated usage properties", () => {
+    const state = initialCodexScanState();
+    state.model = "gpt-5.6-sol";
+    const timestamp = "2026-08-26T10:00:05.000Z";
+    expect(
+      parseCodexLine(tokenLine(timestamp, { input_tokens: 100, output_tokens: 20 }), state),
+    ).not.toBeNull();
+    expect(
+      parseCodexLine(
+        line("event_msg", timestamp, {
+          type: "token_count",
+          info: {
+            last_token_usage: { output_tokens: 20, input_tokens: 100, unrelated: "private-text" },
+          },
+        }),
+        state,
+      ),
+    ).toBeNull();
+    expect(state.lastUsageSignature).not.toContain("private-text");
+  });
 });
 
 function claudeLine(overrides: Record<string, unknown> = {}) {

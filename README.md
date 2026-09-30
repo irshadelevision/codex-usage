@@ -93,10 +93,17 @@ Release artifacts are written to `apps/codex-usage/release`.
   `Claude Code-credentials`. Credentials stay in the main process and are sent only to Anthropic;
   they are not copied to app settings, logs, or renderer data. The app never refreshes or modifies
   Claude Code's rotating tokens and never sends inference requests.
-- Token pricing: LiteLLM pricing data with a local cache.
+- Token pricing: LiteLLM pricing data with a 24-hour local cache. Refresh also checks for new prices,
+  with a one-minute minimum between successful downloads and an offline fallback.
 - Floating exchange rates: Frankfurter reference rates with a local cache and last-known fallback.
 
 The app does not require an exchange-rate API key.
+
+Previously scanned usage is saved locally, so cleaning up session files does not erase dashboard
+totals after an app restart. History is retained for the supported two-year custom-range window;
+files deleted before the app first scanned them cannot be recovered. Only the selected Codex and
+Claude source directories contribute history. Growing transcripts are read incrementally, with
+incomplete final lines replayed safely. The cache stores usage metadata, not conversation text.
 
 Claude limits refresh every five minutes, or when you click Refresh. Missing windows remain
 unavailable instead of being inferred from local costs. If sign-in expires, open Claude Code to
@@ -109,10 +116,12 @@ local activity or Codex usage from loading.
 
 Prices use the current published standard token rates, not historical subscription billing.
 Provider-qualified rates cannot overwrite direct model prices. Unknown or ambiguous models keep
-their token counts, but their costs are excluded and clearly marked unavailable/partial.
+their token counts, but their costs are excluded and clearly marked unavailable/partial unless a
+valid provider-reported cost is available.
 Long-context tiers, negotiated discounts, and service tiers may differ from these estimates.
 
 Claude input, cache reads, and cache writes are counted separately. One-hour cache writes and
 fast-mode multipliers are applied when reported and published. A recorded `costUSD` takes
-precedence when available. Repeated Claude message/request pairs are counted once across files;
+precedence when available, while cache savings remain an estimate based on published rates.
+Repeated Claude message/request pairs and moved/copied Codex session events are counted once across files;
 synthetic error responses are ignored. Missing Claude reasoning metadata is shown as unknown.
