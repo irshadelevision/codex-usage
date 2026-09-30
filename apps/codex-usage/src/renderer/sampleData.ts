@@ -274,15 +274,15 @@ export function createSampleApi(): CodexUsageApi {
       return Promise.resolve(preferences);
     },
     getAppInfo: () =>
-      Promise.resolve({ name: "Codex Usage", version: "0.2.0", author: "Irshad Ibrahim" }),
+      Promise.resolve({ name: "Codex Usage", version: "0.2.1", author: "Irshad Ibrahim" }),
     checkForUpdates: () =>
       Promise.resolve({
-        currentVersion: "0.2.0",
-        latestVersion: "0.2.0",
+        currentVersion: "0.2.1",
+        latestVersion: "0.2.1",
         updateAvailable: false,
-        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.2.0",
+        releaseUrl: "https://github.com/irshadelevision/codex-usage/releases/tag/v0.2.1",
         downloadUrl:
-          "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.0/Codex.Usage-0.2.0-arm64.dmg",
+          "https://github.com/irshadelevision/codex-usage/releases/download/v0.2.1/Codex.Usage-0.2.1-arm64.dmg",
       }),
     openMainWindow: () => Promise.resolve(),
     openAboutWindow: () => Promise.resolve(),
