@@ -310,6 +310,7 @@ export function MenuBarView() {
   const summary = usageRanges(snapshot, preferences.usageProvider)[activityRange];
   const codexSummary = snapshot.providerRanges.codex[activityRange];
   const claudeSummary = snapshot.providerRanges.claude[activityRange];
+  const costValue = activityCost(summary, preferences.currency, snapshot.exchangeRates);
   const statusRangeEnabled = menuBarDisplayUsesRange(preferences.menuBarDisplay);
   const displayedStatusRange =
     menuBarDisplayFixedRange(preferences.menuBarDisplay) ?? preferences.menuBarRange;
@@ -355,9 +356,7 @@ export function MenuBarView() {
             <div className="menu-activity-metrics">
               <div>
                 <span>{summary.unpricedRecords > 0 ? "Cost (partial)" : "API estimate"}</span>
-                <strong>
-                  {activityCost(summary, preferences.currency, snapshot.exchangeRates)}
-                </strong>
+                <strong>{costValue}</strong>
               </div>
               <div>
                 <span>Tokens</span>

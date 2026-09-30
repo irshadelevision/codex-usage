@@ -1463,7 +1463,7 @@ html.menu-bar-document #root {
 
 .menu-activity-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 4fr) repeat(2, minmax(0, 1fr));
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgb(255 255 255 / 2%);
@@ -1481,6 +1481,7 @@ html.menu-bar-document #root {
 
 .menu-activity-metrics > div + div {
   border-left: 1px solid var(--border);
+  padding-inline: 6px;
 }
 
 .menu-activity-metrics span,
@@ -1498,6 +1499,12 @@ html.menu-bar-document #root {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.menu-activity-metrics > div:first-child strong {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .menu-activity-context {
